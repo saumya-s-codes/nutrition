@@ -1,0 +1,19 @@
+{
+  "id": "./",
+  "name": "Crisper",
+  "short_name": "Crisper",
+  "description": "Plan your week from your fridge, shop only for what you need, and log what you cook and eat.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "lang": "en",
+  "background_color": "#FBF7EF",
+  "theme_color": "#FBF7EF",
+  "categories": ["food", "lifestyle", "health"],
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}
