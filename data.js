@@ -9,8 +9,7 @@ const CATS = [
   { id: 'fill',  name: 'Fillings',   short: 'Fillings',   icon: 'rice',             bg: '#fbeccb', ink: '#8a6414', hint: 'Grains, bread and starches.' },
   { id: 'flav',  name: 'Flavors',    short: 'Flavors',    icon: 'hot-honey',        bg: '#ece4f6', ink: '#5d3f8f', hint: 'Sauces and toppings that make it good.' },
   { id: 'fruit', name: 'Fruits',     short: 'Fruit',      icon: 'apples',           bg: '#fde2e4', ink: '#a8323f', hint: 'Fresh and easy.' },
-  { id: 'bfast', name: 'Breakfasts', short: 'Breakfasts', icon: 'avocado-toast-egg',bg: '#dcebf7', ink: '#2b6490', hint: 'Start the day without thinking.' },
-  { id: 'meal',  name: 'Easy meals', short: 'Easy meals', icon: 'stir-fry',         bg: '#dde8f6', ink: '#35588f', hint: 'Whole meals for the nights you want zero effort.' },
+  { id: 'meal',  name: 'Easy meals', short: 'Easy meals', icon: 'stir-fry',         bg: '#dde8f6', ink: '#35588f', hint: 'Whole meals and breakfasts for when you want zero effort.' },
   { id: 'snack', name: 'Snacks',     short: 'Snacks',     icon: 'popcorn',          bg: '#e8f1d8', ink: '#4f6b25', hint: 'Between-meal grabs.' },
   { id: 'treat', name: 'Treats',     short: 'Treats',     icon: 'cookies',          bg: '#fce0e0', ink: '#a03a3a', hint: 'Planned, so they stay a treat.' },
 ];
@@ -29,7 +28,6 @@ const STORAGE_DEFAULT = {
   fill: 'Store dry goods in a cool pantry. Cooked leftovers go in a sealed container in the fridge.',
   flav: 'Seal tightly and refrigerate after opening.',
   fruit: 'Keep dry. Refrigerate once ripe.',
-  bfast: 'Keep components separate until you eat.',
   meal: 'Cool quickly, then refrigerate in a sealed container.',
   snack: 'Keep sealed and dry.',
   treat: 'Keep sealed so it stays fresh.',
@@ -91,7 +89,7 @@ fruit|mandarins|Mandarins|5|5|0|14|0|Mandarins:5:ea|Fridge crisper or cool count
 fruit|peaches|Peaches / nectarines|4|4|0|5|0|Peaches:4:ea|Counter to ripen, then fridge.|Wash and slice.
 fruit|melon|Melon|4|4|0|5|0|Melon:1:ea|Whole on the counter. Cut pieces in the fridge, covered.|Cube and store in a sealed container.
 bfast|cereal-milk|Cereal + milk|4|4|0|180|0|Cereal:2:cup;Milk:2:cup|Cereal in a sealed bag. Milk in the fridge.|Pour and eat.
-bfast|eggs-toast-b|Eggs + toast|2|2|1|5|3|Eggs:4:ea;Bread:4:slice|Fridge for the eggs.|Scramble or fry eggs. Toast the bread.
+#merged into the Easy meals 'Eggs + toast':bfast|eggs-toast-b|Eggs + toast|2|2|1|5|3|Eggs:4:ea;Bread:4:slice|Fridge for the eggs.|Scramble or fry eggs. Toast the bread.
 bfast|yogurt-fruit-granola|Yogurt + fruit + granola|4|4|0|7|0|Greek yogurt:2:cup;Mixed berries:2:cup;Granola:1:cup|Keep granola separate until serving.|Layer in a bowl or jar.
 bfast|avocado-toast-egg|Avocado toast + egg|2|2|1|4|2|Avocados:1:ea;Eggs:2:ea;Bread:2:slice|Avocado on the counter until ripe, then fridge.|Mash avocado onto toast. Top with a fried or soft-boiled egg.
 bfast|bagel-cream-cheese|Bagel + cream cheese|4|4|0|5|0|Bagels:4:ea;Cream cheese:4:tbsp|Fridge for the cream cheese.|Toast and spread.
@@ -138,18 +136,22 @@ treat|other-treat|Other treat|1|1|0|7|0|Treat:1:ea||
 
 function parseModules() {
   return RAW.trim().split('\n').map((line, i) => {
+    if (line.startsWith('#')) return null; // commented-out lines still count, so ids stay stable
     const p = line.split('|');
     const [cat, icon, name, makes, per, cook, raw, cooked, ings, storage, method] = p;
     return {
       id: 'm' + (i + 1),
-      cat, icon, name,
+      cat: cat === 'bfast' ? 'meal' : cat, bf: cat === 'bfast', icon, name,
       makes: +makes, per: +per, cook: cook === '1',
       raw: +raw, cooked: +cooked,
       ing: ings.split(';').map(s => { const [n, a, u] = s.split(':'); return { n, a: +a, u }; }),
       storage: storage || '', method: method || '',
     };
-  });
+  }).filter(Boolean);
 }
+
+// How many to pick from each step when planning a week (editable in Settings; 0 means no target).
+const DEFAULT_TARGETS = { veg: 3, pro: 2, fill: 2, flav: 2, fruit: 2, meal: 3, snack: 3, treat: 1 };
 
 // name|unit -> [package name, base units per package]
 const PACKS = {

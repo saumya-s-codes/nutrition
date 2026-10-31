@@ -362,3 +362,45 @@ h1, h2 { font-family: var(--serif); letter-spacing: -0.01em; }
 .hero-text { position: relative; z-index: 2; }
 .hero-more { z-index: 3; }
 .hero + .chips, .hero + .daystrip, .hero + .diary { position: relative; z-index: 2; margin-top: -16px; }
+
+/* sheet header with a Done / Saved pill (no Save buttons) */
+.sheethead { display: flex; align-items: center; gap: 10px; }
+.sheethead h2 { flex: 1; min-width: 0; }
+.donepill { display: inline-flex; align-items: center; gap: 5px; flex: none; padding: 8px 15px; border-radius: 999px; background: var(--soft2); color: var(--tx); font-weight: 650; font-size: 14px; }
+.donepill .svg { width: 16px; height: 16px; }
+.donepill.ok { background: var(--green-soft); color: var(--gt); }
+.donepill.pop { animation: popin .38s cubic-bezier(.2,.9,.3,1.3); }
+@keyframes popin { 0% { transform: scale(.82); } 100% { transform: scale(1); } }
+.formmsg { color: var(--red); font-size: 13px; font-weight: 600; margin: -2px 0 0; }
+.formmsg:empty { display: none; }
+#sheet .ingrow.setrow { grid-template-columns: 1fr 96px; }
+
+/* two-column week summary */
+.sgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: start; }
+.sgrid .sgroup { min-width: 0; padding: 12px 10px 10px 12px; }
+.sgroup h3 { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
+.sgroup h3 small { color: var(--muted); font-family: var(--sans); font-size: 12px; font-weight: 600; }
+.sgrid .schips { flex-direction: column; flex-wrap: nowrap; gap: 6px; }
+.sgrid .schip { width: 100%; align-items: center; border-radius: 14px; padding: 5px 8px 5px 5px; text-align: left; line-height: 1.2; }
+.sgrid .schip span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.step b.met { background: var(--green); color: #fff; }
+/* settings: planning order and targets */
+.orderlist { display: grid; gap: 6px; }
+.orow { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
+.orow > b { flex: 1; font-size: 15px; min-width: 0; }
+.oicon { width: 34px; height: 34px; border-radius: 50%; background: var(--bg); display: grid; place-items: center; flex: none; }
+.oicon .ico { width: 24px; height: 24px; }
+.movers, .pickn { display: inline-flex; align-items: center; gap: 2px; background: var(--soft); border-radius: 16px; padding: 2px; flex: none; }
+.movers button, .pickn button { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; }
+.movers button:disabled { opacity: .3; }
+.movers .svg, .pickn .svg { width: 16px; height: 16px; }
+.pickn b { min-width: 34px; text-align: center; font-size: 14px; }
+/* re-rendered sheets don't replay the slide-in */
+#sheet.still .panel, #sheet.still .backdrop, #sheet.still .panel .cardback { animation: none; }
+/* summary cards: foods as compact labels, equal-height cards per row */
+.sgrid { align-items: stretch; }
+.sgrid .sgroup { display: flex; flex-direction: column; }
+.sgrid .schips { flex-direction: row; flex-wrap: wrap; align-content: flex-start; gap: 6px; }
+.sgrid .schip { width: auto; max-width: 100%; gap: 5px; padding: 3px 10px 3px 4px; border-radius: 14px; font-size: 13px; font-weight: 600; line-height: 1.2; }
+.sgrid .schip .ico { width: 22px; height: 22px; }
+.sgrid .schip span { flex: 0 1 auto; }
