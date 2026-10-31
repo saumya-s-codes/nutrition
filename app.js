@@ -18,7 +18,7 @@ const mondayOf = s => { const d = parseIso(s); const k = (d.getDay() + 6) % 7; d
 const plural = (n, w) => `${nice(n)} ${w}${Math.abs(n - 1) < 1e-9 ? '' : 's'}`;
 
 // ---------- state ----------
-const APP_VERSION = '1.18'; // keep in step with VERSION in sw.js
+const APP_VERSION = '1.23'; // keep in step with VERSION in sw.js
 const KEY = 'mealloop.v1';
 const fresh = () => ({
   v: 4, modules: parseModules(), week: null, history: [], fridge: [], cooked: {},
@@ -401,15 +401,14 @@ function weekSummary(lines) {
   return `<section class="summary">
     <div class="sumhead">
       <div><h2>${w.locked ? 'Week locked in' : 'Draft week'}</h2><p>Week of ${parseIso(mondayOf(w.start)).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · ${w.picks.length} picks · ${lines.length} to buy</p></div>
-      ${w.locked ? `<span class="pill ok">${svg('check')}Locked</span>` : ''}
+      <div class="sumact">${w.locked ? `<span class="pill ok">${svg('check')}Locked</span>` : ''}<button class="btn small editbtn" data-a="editWeek">${svg('edit')}${w.locked ? 'Edit' : 'Continue'}</button></div>
     </div>
     ${groups.length ? `<div class="sgrid">${groups.map(g => `<div class="sgroup" style="--bg:${g.c.bg};--ink:${g.c.ink}">
         <h3>${g.c.short}<small>${g.ms.length}${targetFor(g.c.id) ? ' of ' + targetFor(g.c.id) : ''}</small></h3>
         <div class="schips">${g.ms.map(m => `<button class="schip" data-a="info" data-m="${m.id}">${ico(m.icon)}<span>${esc(m.name)}</span></button>`).join('')}</div>
       </div>`).join('')}</div>` : '<p class="muted pad">Nothing picked yet.</p>'}
     <div class="actions">
-      <button class="btn primary" data-a="editWeek">${w.locked ? 'Edit week' : 'Continue planning'}</button>
-      <button class="btn" data-a="planTab" data-t="cart">Shopping cart (${lines.length})</button>
+      <button class="btn primary" data-a="planTab" data-t="cart">Shopping cart (${lines.length})</button>
       <button class="btn ghost" data-a="startWeek">Start new week</button>
     </div>
   </section>`;
@@ -621,9 +620,9 @@ function sheetHtml() {
       ${d.ing.map((i, n) => `<div class="ingrow"><input data-f="n" data-i="${n}" list="ingnames" value="${esc(i.n)}" placeholder="Ingredient"><input data-f="a" data-i="${n}" type="text" inputmode="text" placeholder="1/2" value="${esc(nice(i.a))}" aria-label="Amount"><select data-f="u" data-i="${n}" aria-label="Unit">${unitOpts(i.u)}</select><button class="icon-btn" data-a="rmIng" data-i="${n}" aria-label="Remove ingredient">${svg('x')}</button></div>`).join('')}
       <datalist id="ingnames">${knownNames().map(x => `<option value="${esc(x)}">`).join('')}</datalist>
       <button class="linkbtn" data-a="addIng">${svg('plus')}Add ingredient</button>
-      <div class="two"><label>Makes (servings)<input data-f="makes" type="number" inputmode="numeric" value="${d.makes}"></label><label>Per cook<input data-f="per" type="number" inputmode="numeric" value="${d.per}"></label></div>
-      <div class="two"><label>Raw life (days)<input data-f="raw" type="number" inputmode="numeric" value="${d.raw}"></label><label>Cooked life (days)<input data-f="cooked" type="number" inputmode="numeric" value="${d.cooked}"></label></div>
+      <div class="two"><label>Makes (servings)<input data-f="makes" type="number" inputmode="numeric" value="${d.makes}"></label><label>Raw life (days)<input data-f="raw" type="number" inputmode="numeric" value="${d.raw}"></label></div>
       <label class="check"><input type="checkbox" data-f="cook" ${d.cook ? 'checked' : ''}> Needs cooking before eating</label>
+      <div class="two"><label data-cookonly class="${d.cook ? '' : 'off'}">Per cook<input data-f="per" type="number" inputmode="numeric" value="${d.per}" ${d.cook ? '' : 'disabled'}></label><label data-cookonly class="${d.cook ? '' : 'off'}">Cooked life (days)<input data-f="cooked" type="number" inputmode="numeric" value="${d.cooked}" ${d.cook ? '' : 'disabled'}></label></div>
       <label class="check"><input type="checkbox" data-f="bf" ${d.bf ? 'checked' : ''}> Counts as breakfast (Auto-plan uses it for the Breakfast slot)</label>
       <label>Storage<textarea data-f="storage" rows="2">${esc(d.storage)}</textarea></label>
       <label>Method &amp; notes<textarea data-f="method" rows="3">${esc(d.method)}</textarea></label>
@@ -677,22 +676,25 @@ function sheetHtml() {
       <label>Your thoughts<textarea id="lg-o" rows="2" placeholder="Optional">${esc(L.notes)}</textarea></label>`;
   }
   if (s.t === 'addItem') inner = `${sheetHead('Add to fridge')}<label>Item<input id="ai-n" list="ingnames" placeholder="e.g. Parsley"></label><datalist id="ingnames">${knownNames().map(x => `<option value="${esc(x)}">`).join('')}</datalist><div class="two"><label>Quantity<input id="ai-q" type="text" inputmode="text" value="1" placeholder="1/2"></label><label>Unit<select id="ai-u">${unitOpts('ea')}</select></label></div><label>Keeps for (days)<input id="ai-l" type="number" inputmode="numeric" placeholder="auto"></label><p class="muted tiny">It saves when you close this. Leave the name blank to skip.</p>`;
-  if (s.t === 'settings') inner = `${sheetHead('Settings')}
-    <h4>Planning</h4>
-    <p class="muted">The order of the steps when you plan a week, and how many to pick from each. Use 0 for no target.</p>
-    <div class="orderlist">${orderedCats().map((c, i, arr) => `<div class="orow" style="--bg:${c.bg}"><span class="oicon">${ico(c.icon)}</span><b>${c.short}</b>
-      <span class="movers"><button data-a="catMove" data-c="${c.id}" data-d="-1" ${i === 0 ? 'disabled' : ''} aria-label="Move ${c.short} earlier">${svg('up')}</button><button data-a="catMove" data-c="${c.id}" data-d="1" ${i === arr.length - 1 ? 'disabled' : ''} aria-label="Move ${c.short} later">${svg('down')}</button></span>
-      <span class="pickn"><button data-a="catTarget" data-c="${c.id}" data-d="-1" aria-label="Fewer ${c.short}">${svg('minus')}</button><b>${targetFor(c.id) || 'Any'}</b><button data-a="catTarget" data-c="${c.id}" data-d="1" aria-label="More ${c.short}">${svg('plus')}</button></span></div>`).join('')}</div>
-    <h4>Use-it-up warnings</h4>
-    <p class="muted">Food turns yellow, then red, on the Eat page when you'd have to eat this many servings a day to finish it before it goes bad. Food that expires today is always red.</p>
-    <label>Turns yellow at<div class="inline"><input id="st-y" type="number" inputmode="decimal" min="0.1" step="0.1" value="${S.settings.yellow}"><span>servings a day</span></div></label>
-    <label>Turns red at<div class="inline"><input id="st-r" type="number" inputmode="decimal" min="0.1" step="0.1" value="${S.settings.red}"><span>servings a day</span></div></label>
-    <label>Start watching raw food<div class="inline"><input id="st-w" type="number" inputmode="numeric" min="1" step="1" value="${S.settings.rawWindow}"><span>days before it expires</span></div></label>
-    <p class="muted tiny">Example: 2 cooked servings with 2 days left is 1 serving a day. Changes save as you type.</p>
-    <h4>Your data</h4>
-    <div class="sheetbtns col"><button class="btn" data-a="exportData">Export backup</button><label class="btn filebtn">Import backup<input type="file" accept="application/json" id="imp" hidden></label><button class="btn danger" data-a="resetModules">Reset module library</button></div>
-    <p class="muted tiny">Everything is stored on this device only. Export a backup now and then.</p>
+  if (s.t === 'settings') {
+    const acc = (k, title, summary, body) => { const open = !!(s.open && s.open[k]); return `<button class="acc" data-a="toggleAcc" data-k="${k}" aria-expanded="${open}"><span><b>${title}</b><small>${summary}</small></span>${svg(open ? 'up' : 'down')}</button>${open ? `<div class="accbody">${body}</div>` : ''}`; };
+    const planBody = `<p class="muted">The order of the steps when you plan a week, and how many to pick from each. Use 0 for no target.</p>
+      <div class="orderlist">${orderedCats().map((c, i, arr) => `<div class="orow" style="--bg:${c.bg}"><span class="oicon">${ico(c.icon)}</span><b>${c.short}</b>
+        <span class="movers"><button data-a="catMove" data-c="${c.id}" data-d="-1" ${i === 0 ? 'disabled' : ''} aria-label="Move ${c.short} earlier">${svg('up')}</button><button data-a="catMove" data-c="${c.id}" data-d="1" ${i === arr.length - 1 ? 'disabled' : ''} aria-label="Move ${c.short} later">${svg('down')}</button></span>
+        <span class="pickn"><button data-a="catTarget" data-c="${c.id}" data-d="-1" aria-label="Fewer ${c.short}">${svg('minus')}</button><b>${targetFor(c.id) || 'Any'}</b><button data-a="catTarget" data-c="${c.id}" data-d="1" aria-label="More ${c.short}">${svg('plus')}</button></span></div>`).join('')}</div>`;
+    const warnBody = `<p class="muted">Food turns yellow, then red, on the Eat page when you'd have to eat this many servings a day to finish it before it goes bad. Food that expires today is always red.</p>
+      <label>Turns yellow at<div class="inline"><input id="st-y" type="number" inputmode="decimal" min="0.1" step="0.1" value="${S.settings.yellow}"><span>servings a day</span></div></label>
+      <label>Turns red at<div class="inline"><input id="st-r" type="number" inputmode="decimal" min="0.1" step="0.1" value="${S.settings.red}"><span>servings a day</span></div></label>
+      <label>Start watching raw food<div class="inline"><input id="st-w" type="number" inputmode="numeric" min="1" step="1" value="${S.settings.rawWindow}"><span>days before it expires</span></div></label>
+      <p class="muted tiny">Example: 2 cooked servings with 2 days left is 1 serving a day. Changes save as you type.</p>`;
+    const dataBody = `<div class="sheetbtns col"><button class="btn" data-a="exportData">Export backup</button><label class="btn filebtn">Import backup<input type="file" accept="application/json" id="imp" hidden></label><button class="btn danger" data-a="resetModules">Reset module library</button></div>
+      <p class="muted tiny">Everything is stored on this device only. Export a backup now and then.</p>`;
+    inner = `${sheetHead('Settings')}
+    ${acc('plan', 'Planning', `${orderedCats().length} steps · ${orderedCats().reduce((n, c) => n + targetFor(c.id), 0)} picks a week`, planBody)}
+    ${acc('warn', 'Use-it-up warnings', `Yellow at ${S.settings.yellow} · red at ${S.settings.red} · raw ${S.settings.rawWindow} days`, warnBody)}
+    ${acc('data', 'Your data', 'Back up, restore, or reset', dataBody)}
     <p class="version">Meal Loop · version ${APP_VERSION}</p>`;
+  }
   return `<div class="backdrop" data-a="closeSheet"></div><div class="panel ${cls}"><div class="grab"></div>${inner}</div>`;
 }
 const ALL_ICONS = ['carrots', 'brussels-sprouts', 'cucumber', 'butternut-squash', 'tomatoes', 'tomato-cucumber-salad', 'green-beans', 'bell-peppers', 'broccoli', 'sweet-potato', 'salad-greens', 'spinach', 'chicken', 'chickpeas', 'eggs', 'hummus', 'black-beans', 'lentils', 'salmon', 'tofu', 'greek-yogurt', 'turkey', 'mac-cheese', 'pita', 'rice', 'pasta', 'potatoes', 'bread', 'ramen-noodles', 'tortillas', 'couscous', 'bagels', 'quinoa', 'other-grain', 'hot-honey', 'tahini-lemon', 'feta', 'tomato-sauce', 'pesto', 'salsa', 'soy-sesame', 'garlic-butter', 'yogurt-sauce', 'lemon-olive-oil', 'favorite-dressing', 'bananas', 'apples', 'strawberries', 'blueberries', 'grapes', 'mandarins', 'peaches', 'melon', 'cereal-milk', 'eggs-toast-b', 'yogurt-fruit-granola', 'avocado-toast-egg', 'bagel-cream-cheese', 'oatmeal', 'purchased-breakfast', 'apple-pb', 'crackers-cheese', 'hummus-veggies', 'yogurt', 'trail-mix', 'popcorn', 'granola-bar', 'fruit-snack', 'cheese-fruit', 'rice-cakes', 'nut-butter-banana', 'chicken-noodle-soup', 'ramen-egg', 'takeout', 'frozen-meal', 'quesadilla', 'cereal-dinner', 'eggs-toast', 'soup-bread', 'pasta-sauce', 'stir-fry', 'salad-bowl', 'other-meal', 'cookies', 'ice-cream', 'chocolate', 'brownie', 'pastry', 'chips', 'candy', 'seasonal', 'croissant', 'cake', 'donut'];
@@ -722,7 +724,10 @@ function renderSheet() {
 function readDraftField(el) {
   const d = ui.draft; const f = el.dataset.f; if (!d || !f) return;
   if (el.dataset.i !== undefined) { const row = d.ing[+el.dataset.i]; row[f] = f === 'a' ? parseAmt(el.value) : el.value; return; }
-  if (f === 'cook') d.cook = el.checked;
+  if (f === 'cook') {
+    d.cook = el.checked;
+    document.querySelectorAll('#sheet [data-cookonly]').forEach(l => { l.classList.toggle('off', !d.cook); const i = l.querySelector('input'); if (i) i.disabled = !d.cook; });
+  }
   else if (f === 'bf') d.bf = el.checked;
   else if (['makes', 'per', 'raw', 'cooked'].includes(f)) d[f] = parseFloat(el.value) || 0;
   else d[f] = el.value;
@@ -735,6 +740,8 @@ document.addEventListener('input', e => {
     const v = parseFloat(e.target.value); if (!(v > 0)) return;
     if (id === 'st-y') S.settings.yellow = v; else if (id === 'st-r') S.settings.red = v; else S.settings.rawWindow = Math.max(1, Math.round(v));
     save(); renderMain(); savedFlash();
+    const sm = document.querySelector('.acc[data-k="warn"] small');
+    if (sm) sm.textContent = `Yellow at ${S.settings.yellow} · red at ${S.settings.red} · raw ${S.settings.rawWindow} days`;
   }
 });
 document.addEventListener('change', e => {
@@ -907,6 +914,7 @@ const A = {
   tallyCook: d => { const mid = ui.sheet.mid; if (+d.d > 0) mutate('Added a cooked serving.', () => { const short = doCook(mid, 1); if (short.length) return `Added one. Short on ${short.slice(0, 2).join(', ')}.`; }); else mutate('Removed a cooked serving.', () => undoCook(mid)); },
   tallyEat: d => { const mid = ui.sheet.mid; if (+d.d > 0) mutate('Logged one eaten.', () => doEat(mid, ui.date, null, null)); else mutate('Removed one eaten.', () => undoEat(mid)); },
   // settings: planning order and targets
+  toggleAcc: d => { const o = ui.sheet.open = ui.sheet.open || {}; o[d.k] = !o[d.k]; renderSheet(); },
   catMove: d => { const ord = orderedCats().map(c => c.id), i = ord.indexOf(d.c), j = i + (+d.d); if (j < 0 || j >= ord.length) return; [ord[i], ord[j]] = [ord[j], ord[i]]; S.settings.catOrder = ord; save(); renderMain(); renderSheet(); savedFlash(); },
   catTarget: d => { const t = Math.max(0, Math.min(12, targetFor(d.c) + (+d.d))); S.settings.targets = { ...(S.settings.targets || {}), [d.c]: t }; save(); renderMain(); renderSheet(); savedFlash(); },
   // manual log

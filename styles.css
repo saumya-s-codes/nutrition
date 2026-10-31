@@ -404,3 +404,30 @@ h1, h2 { font-family: var(--serif); letter-spacing: -0.01em; }
 .sgrid .schip { width: auto; max-width: 100%; gap: 5px; padding: 3px 10px 3px 4px; border-radius: 14px; font-size: 13px; font-weight: 600; line-height: 1.2; }
 .sgrid .schip .ico { width: 22px; height: 22px; }
 .sgrid .schip span { flex: 0 1 auto; }
+
+/* cooking-only fields are greyed out unless "Needs cooking" is on */
+.panel label.off { opacity: .45; }
+.panel input:disabled { background: var(--soft); color: var(--muted); cursor: not-allowed; }
+
+/* Edit sits beside the Locked check */
+.sumhead { align-items: flex-start; gap: 10px; }
+.sumact { display: flex; align-items: center; gap: 8px; flex: none; padding-top: 2px; }
+.btn.editbtn { min-height: 32px; padding: 0 12px 0 10px; gap: 5px; font-size: 13px; background: var(--soft2); color: var(--tx); }
+.btn.editbtn .svg { width: 15px; height: 15px; }
+
+/* collapsible Planning section in Settings */
+.acc { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; text-align: left; }
+.acc > span:first-child { flex: 1; display: grid; gap: 1px; min-width: 0; }
+.acc b { font-family: var(--serif); font-size: 17px; }
+.acc small { color: var(--muted); font-size: 12.5px; }
+.acc .svg { color: var(--muted); width: 22px; height: 22px; }
+.acc[aria-expanded="true"] { border-color: var(--gt); }
+.accbody { display: grid; gap: 8px; }
+
+/* wider Eat button */
+#tabs { grid-template-columns: 1fr 1.7fr 1fr; }
+.tab.main { width: min(150px, 100%); }
+.acc + .accbody, .accbody { margin-bottom: 2px; }
+/* Plan, Eat and Diary are the same width */
+#tabs { grid-template-columns: repeat(3, 1fr); }
+.tab, .tab.main { width: 100%; justify-self: stretch; }
