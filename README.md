@@ -1,34 +1,23 @@
-# Crisper
+# Meal Loop
 
-Plan your week from your fridge, shop only for what you need, and log what you cook and eat.
-A static web app: no server, no build step. It installs to the home screen and works offline.
+Plan the week, cook, eat, log. A static PWA: no build step, no backend, all data stays on your device.
 
-## Deploy on GitHub Pages
+## Deploy to GitHub Pages
+1. Create a new GitHub repo and upload everything in this folder (keep the folder structure, including `.nojekyll`).
+2. In the repo go to **Settings → Pages**. Under **Build and deployment**, choose **Deploy from a branch**, pick `main` and `/ (root)`, then Save.
+3. After a minute your app is live at `https://YOUR-USERNAME.github.io/REPO-NAME/`.
+4. On your iPhone, open that link in Safari, tap Share, then **Add to Home Screen**. On Android, use Chrome's **Install app**.
 
-1. On github.com, create a new repository (public is fine). Name it anything, for example `crisper`.
-2. Upload the files from this zip to the **top level** of the repo (Add file → Upload files, drag in the files, then Commit).
-   Upload the files themselves, not a folder that contains them. `index.html` has to sit at the top.
-3. Go to **Settings → Pages**. Under "Build and deployment", set Source to **Deploy from a branch**, Branch to **main**, Folder to **/ (root)**, then Save.
-4. Wait a minute or two. Your app will be at `https://YOUR-USERNAME.github.io/crisper/`.
+## Updating
+Edit files, commit, and bump `VERSION` in `sw.js` (for example `meal-loop-v13`) and `APP_VERSION` at the top of `app.js` (for example `1.13`) so phones pick up the new files. The version shows at the bottom of Settings.
 
-Everything uses relative paths, so it works under the `/crisper/` address as is.
+## Run locally
+`python3 -m http.server 8000` in this folder, then open http://localhost:8000.
 
-## Install it on your phone
+## Notes
+- Data lives in the browser's local storage. Use **… → Export backup** in the app now and then.
+- Edit the starter library in `data.js` (modules, pack sizes like "1 bottle = 24 tbsp", shelf lives).
+- Flag thresholds are in the app under **… → Settings**.
 
-- **iPhone:** open the link in Safari → Share → Add to Home Screen.
-- **Android (Chrome):** menu → Install app.
-
-## Your data
-
-Data is saved on the phone. If the app is deleted, it goes too.
-Use **Settings → Back up my data** to save a file, and **Restore from a backup** to load it again.
-The app reminds you to back up once a week.
-
-## Shipping an update
-
-1. Edit `index.html`.
-2. Change the version in **two places**: `APP_VERSION` near the top of the script in `index.html`, and `VERSION` at the top of `sw.js`. Update `APP_BUILD` to today's date.
-3. Upload the changed files to the repo (Add file → Upload files, same names, then Commit).
-
-People who already have the app see "A new version is ready" with an **Update** button.
-Settings → About shows the version and has a **Check for updates** button. If an old copy gets stuck, **Settings → Refresh app** clears it. Data stays.
+## Units
+Amounts are stored in one base unit per type (teaspoons for volume, ounces for weight, or the count unit itself) and shown in friendly units. So 1 tbsp and 1 tsp of honey both come out of the same bottle. An ingredient can't mix types (for example honey in tbsp in one recipe and oz in another); the editor will tell you to pick a matching unit.

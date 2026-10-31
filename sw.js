@@ -1,46 +1,117 @@
-/* Crisper service worker.
-   To ship an update: change VERSION here AND APP_VERSION in index.html, then redeploy.
-   Open copies of the app show an "Update" prompt; nothing reloads under you. */
-const VERSION = '1.0.0';
-const CACHE = `crisper-${VERSION}`;
-const CORE = [
-  './', './index.html', './manifest.webmanifest',
-  './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png', './favicon.png'
-];
+// Offline cache. Bump VERSION whenever you change any file so phones pick up the update.
+const VERSION = 'meal-loop-v15';
+const SHELL = ['./', 'index.html', 'styles.css', 'data.js', 'app.js', 'manifest.webmanifest',
+  'assets/header1.jpg', 'assets/header2.jpg', 'assets/header3.jpg', 'assets/fridge.png',
+  'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',
+  'assets/food/apple-pb.png',
+  'assets/food/apples.png',
+  'assets/food/avocado-toast-egg.png',
+  'assets/food/bagel-cream-cheese.png',
+  'assets/food/bagels.png',
+  'assets/food/bananas.png',
+  'assets/food/bell-peppers.png',
+  'assets/food/black-beans.png',
+  'assets/food/blueberries.png',
+  'assets/food/bread.png',
+  'assets/food/broccoli.png',
+  'assets/food/brownie.png',
+  'assets/food/brussels-sprouts.png',
+  'assets/food/butternut-squash.png',
+  'assets/food/cake.png',
+  'assets/food/candy.png',
+  'assets/food/carrots.png',
+  'assets/food/cereal-dinner.png',
+  'assets/food/cereal-milk.png',
+  'assets/food/cheese-fruit.png',
+  'assets/food/chicken-noodle-soup.png',
+  'assets/food/chicken.png',
+  'assets/food/chickpeas.png',
+  'assets/food/chips.png',
+  'assets/food/chocolate.png',
+  'assets/food/cookies.png',
+  'assets/food/couscous.png',
+  'assets/food/crackers-cheese.png',
+  'assets/food/croissant.png',
+  'assets/food/cucumber.png',
+  'assets/food/donut.png',
+  'assets/food/eggs-toast-b.png',
+  'assets/food/eggs-toast.png',
+  'assets/food/eggs.png',
+  'assets/food/favorite-dressing.png',
+  'assets/food/feta.png',
+  'assets/food/frozen-meal.png',
+  'assets/food/fruit-snack.png',
+  'assets/food/garlic-butter.png',
+  'assets/food/granola-bar.png',
+  'assets/food/grapes.png',
+  'assets/food/greek-yogurt.png',
+  'assets/food/green-beans.png',
+  'assets/food/hot-honey.png',
+  'assets/food/hummus-sauce.png',
+  'assets/food/hummus-veggies.png',
+  'assets/food/hummus.png',
+  'assets/food/ice-cream.png',
+  'assets/food/lemon-olive-oil.png',
+  'assets/food/lentils.png',
+  'assets/food/mac-cheese.png',
+  'assets/food/mandarins.png',
+  'assets/food/melon.png',
+  'assets/food/nut-butter-banana.png',
+  'assets/food/oatmeal.png',
+  'assets/food/other-breakfast.png',
+  'assets/food/other-grain.png',
+  'assets/food/other-meal.png',
+  'assets/food/other-snack.png',
+  'assets/food/other-treat.png',
+  'assets/food/pasta-sauce.png',
+  'assets/food/pasta.png',
+  'assets/food/pastry.png',
+  'assets/food/peaches.png',
+  'assets/food/pesto.png',
+  'assets/food/pita.png',
+  'assets/food/popcorn.png',
+  'assets/food/potatoes.png',
+  'assets/food/purchased-breakfast.png',
+  'assets/food/quesadilla.png',
+  'assets/food/quinoa.png',
+  'assets/food/ramen-egg.png',
+  'assets/food/ramen-noodles.png',
+  'assets/food/rice-cakes.png',
+  'assets/food/rice.png',
+  'assets/food/salad-bowl.png',
+  'assets/food/salad-greens.png',
+  'assets/food/salmon.png',
+  'assets/food/salsa.png',
+  'assets/food/seasonal.png',
+  'assets/food/soup-bread.png',
+  'assets/food/soy-sesame.png',
+  'assets/food/spinach.png',
+  'assets/food/stir-fry.png',
+  'assets/food/strawberries.png',
+  'assets/food/sweet-potato.png',
+  'assets/food/tahini-lemon.png',
+  'assets/food/takeout.png',
+  'assets/food/tofu.png',
+  'assets/food/tomato-cucumber-salad.png',
+  'assets/food/tomato-sauce.png',
+  'assets/food/tomatoes.png',
+  'assets/food/tortillas.png',
+  'assets/food/trail-mix.png',
+  'assets/food/turkey.png',
+  'assets/food/yogurt-fruit-granola.png',
+  'assets/food/yogurt-sauce.png',
+  'assets/food/yogurt.png'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)));
+  e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
 });
-
 self.addEventListener('activate', e => {
-  e.waitUntil((async () => {
-    const keys = await caches.keys();
-    await Promise.all(keys.filter(k => k.startsWith('crisper-') && k !== CACHE).map(k => caches.delete(k)));
-    await self.clients.claim();
-  })());
+  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim()));
 });
-
-self.addEventListener('message', e => {
-  if(e.data === 'SKIP_WAITING') self.skipWaiting();
-  if(e.data === 'GET_VERSION' && e.source) e.source.postMessage({type: 'VERSION', version: VERSION});
-});
-
 self.addEventListener('fetch', e => {
-  const req = e.request;
-  if(req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
-  // pages: try the network first so a fresh deploy shows up, fall back to the saved copy when offline
-  if(req.mode === 'navigate'){
-    e.respondWith(
-      fetch(req).then(res => { const copy = res.clone(); caches.open(CACHE).then(c => c.put('./index.html', copy)); return res; })
-        .catch(() => caches.match('./index.html'))
-    );
-    return;
-  }
-  // everything else: saved copy first, then the network
-  e.respondWith(
-    caches.match(req).then(hit => hit || fetch(req).then(res => {
-      if(res.ok){ const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); }
-      return res;
-    }))
-  );
+  if (e.request.method !== 'GET') return;
+  e.respondWith(caches.match(e.request).then(hit => hit || fetch(e.request).then(res => {
+    if (res.ok && new URL(e.request.url).origin === location.origin) { const copy = res.clone(); caches.open(VERSION).then(c => c.put(e.request, copy)); }
+    return res;
+  }).catch(() => caches.match('index.html'))));
 });
