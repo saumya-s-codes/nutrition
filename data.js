@@ -47,21 +47,21 @@ veg|sweet-potato|Sweet potato|4|4|1|21|4|Sweet potatoes:2:ea|Cool, dark pantry. 
 veg|salad-greens|Salad greens|4|4|0|5|0|Salad greens:5:oz|Fridge with a paper towel in the container.|Wash and dry. Dress right before eating.
 veg|spinach|Spinach|4|4|0|5|0|Spinach:5:oz|Fridge with a paper towel in the container.|Eat raw or wilt in a hot pan for 1–2 min.
 pro|chicken|Chicken|4|4|1|2|4|Chicken breast:2:ea|Lowest shelf, sealed. Freeze if not cooking within 2 days.|Season, sear 5 min per side, then finish in a 400°F oven until 165°F inside.
-pro|chickpeas|Chickpeas|4|4|1|730|4|Chickpeas:2:can|Pantry unopened. Fridge once drained and roasted.|Drain, dry well, toss with oil and spices. Roast at 400°F for 25–30 min.
+pro|chickpeas|Chickpeas|4|4|1|730|4|Chickpeas:2:ea|Pantry unopened. Fridge once drained and roasted.|Drain, dry well, toss with oil and spices. Roast at 400°F for 25–30 min.
 pro|eggs|Eggs|6|6|1|28|7|Eggs:6:ea|Fridge, in the carton.|Boil 10–11 min, then cool in ice water. Peel when needed.
 pro|hummus|Hummus|6|6|0|7|0|Hummus:12:tbsp|Fridge, sealed. Smooth the top and add a film of oil.|Ready to eat.
-pro|black-beans|Black beans|4|4|1|730|4|Black beans:2:can|Pantry unopened. Fridge once opened.|Rinse, then warm with spices for 5–10 min.
+pro|black-beans|Black beans|4|4|1|730|4|Black beans:2:ea|Pantry unopened. Fridge once opened.|Rinse, then warm with spices for 5–10 min.
 pro|lentils|Lentils|4|4|1|365|5|Lentils (dry):1:cup|Dry in a pantry jar. Cooked in the fridge.|Rinse, simmer in 3 cups water for 20 min.
 pro|salmon|Salmon|2|2|1|2|3|Salmon fillets:2:ea|Lowest shelf. Cook within 2 days.|Season, roast at 400°F for 10–12 min.
 pro|tofu|Tofu|4|4|1|7|4|Tofu:1:ea|Fridge. Once opened, submerge in water and change daily.|Press 20 min, cube, bake at 400°F for 25 min.
 pro|greek-yogurt|Greek yogurt|4|4|0|14|0|Greek yogurt:2:cup|Fridge, sealed.|Ready to eat.
-pro|turkey|Turkey|4|4|0|5|0|Deli turkey:8:slice|Fridge, sealed. Use within 5 days of opening.|Ready to eat.
+pro|turkey|Turkey|4|4|0|5|0|Deli turkey:8:ea|Fridge, sealed. Use within 5 days of opening.|Ready to eat.
 fill|mac-cheese|Mac & cheese|4|4|1|180|4|Pasta:8:oz;Cheese:8:oz;Milk:1:cup|Cool, then refrigerate in a sealed container.|Boil pasta, stir in milk and cheese over low heat until creamy.
 fill|pita|Pita|4|4|0|7|0|Pita:4:ea|Counter 2 days, fridge after.|Warm for 20 seconds in a pan.
 fill|rice|Rice|6|6|1|365|5|Rice:1.5:cup|Dry in a pantry. Cool cooked rice within 1 hour and refrigerate.|Rinse, simmer 1:2 with water, covered, for 15 min. Rest 5 min.
 fill|pasta|Pasta|4|4|1|365|5|Pasta:8:oz|Dry in a pantry. Toss cooked pasta in a little oil before storing.|Boil in salted water until al dente.
 fill|potatoes|Potatoes|4|4|1|21|4|Potatoes:4:ea|Cool, dark pantry.|Cube and roast at 425°F for 30 min, or boil 15 min.
-fill|bread|Bread / toast|8|8|0|5|0|Bread:8:slice|Counter 3 days, freezer for longer.|Toast to your liking.
+fill|bread|Bread / toast|8|8|0|5|0|Bread:8:ea|Counter 3 days, freezer for longer.|Toast to your liking.
 fill|ramen-noodles|Ramen / noodles|2|2|1|180|3|Ramen noodles:2:ea|Dry in a pantry.|Boil 3 min, drain, add sauce.
 fill|tortillas|Tortillas|8|8|0|14|0|Tortillas:8:ea|Fridge after opening.|Warm in a dry pan for 15 seconds a side.
 fill|couscous|Couscous|4|4|1|365|5|Couscous:1:cup|Dry in a pantry.|Pour over 1 cup boiling water, cover 5 min, fluff.
@@ -75,8 +75,8 @@ flav|tomato-sauce|Tomato sauce + Parmesan|4|4|1|7|5|Tomato sauce:2:cup;Parmesan:
 flav|pesto|Pesto|4|4|0|14|0|Pesto:4:tbsp|Fridge, with a layer of oil on top.|Ready to eat.
 flav|salsa|Salsa|4|4|0|14|0|Salsa:1:cup|Fridge once opened.|Ready to eat.
 flav|soy-sesame|Soy-sesame|4|4|0|90|0|Soy sauce:4:tbsp;Sesame oil:1:tbsp|Pantry, sealed.|Whisk together.
-flav|garlic-butter|Garlic butter|4|4|0|14|0|Butter:4:tbsp;Garlic:2:clove|Fridge, sealed.|Mash softened butter with minced garlic and salt.
-flav|yogurt-sauce|Yogurt sauce|4|4|0|7|0|Greek yogurt:0.5:cup;Garlic:1:clove|Fridge, sealed.|Stir yogurt with garlic, salt and lemon.
+flav|garlic-butter|Garlic butter|4|4|0|14|0|Butter:4:tbsp;Garlic:2:ea|Fridge, sealed.|Mash softened butter with minced garlic and salt.
+flav|yogurt-sauce|Yogurt sauce|4|4|0|7|0|Greek yogurt:0.5:cup;Garlic:1:ea|Fridge, sealed.|Stir yogurt with garlic, salt and lemon.
 flav|lemon-olive-oil|Lemon + olive oil|4|4|0|30|0|Lemons:1:ea;Olive oil:4:tbsp|Fridge, sealed. Oil may cloud when cold.|Whisk juice and oil with salt.
 flav|hummus-sauce|Hummus|4|4|0|7|0|Hummus:8:tbsp|Fridge, sealed.|Ready to eat.
 flav|favorite-dressing|Favorite dressing|4|4|0|60|0|Dressing:4:tbsp|Fridge once opened.|Shake and pour.
@@ -89,9 +89,9 @@ fruit|mandarins|Mandarins|5|5|0|14|0|Mandarins:5:ea|Fridge crisper or cool count
 fruit|peaches|Peaches / nectarines|4|4|0|5|0|Peaches:4:ea|Counter to ripen, then fridge.|Wash and slice.
 fruit|melon|Melon|4|4|0|5|0|Melon:1:ea|Whole on the counter. Cut pieces in the fridge, covered.|Cube and store in a sealed container.
 bfast|cereal-milk|Cereal + milk|4|4|0|180|0|Cereal:2:cup;Milk:2:cup|Cereal in a sealed bag. Milk in the fridge.|Pour and eat.
-#merged into the Easy meals 'Eggs + toast':bfast|eggs-toast-b|Eggs + toast|2|2|1|5|3|Eggs:4:ea;Bread:4:slice|Fridge for the eggs.|Scramble or fry eggs. Toast the bread.
+#merged into the Easy meals 'Eggs + toast':bfast|eggs-toast-b|Eggs + toast|2|2|1|5|3|Eggs:4:ea;Bread:4:ea|Fridge for the eggs.|Scramble or fry eggs. Toast the bread.
 bfast|yogurt-fruit-granola|Yogurt + fruit + granola|4|4|0|7|0|Greek yogurt:2:cup;Mixed berries:2:cup;Granola:1:cup|Keep granola separate until serving.|Layer in a bowl or jar.
-bfast|avocado-toast-egg|Avocado toast + egg|2|2|1|4|2|Avocados:1:ea;Eggs:2:ea;Bread:2:slice|Avocado on the counter until ripe, then fridge.|Mash avocado onto toast. Top with a fried or soft-boiled egg.
+bfast|avocado-toast-egg|Avocado toast + egg|2|2|1|4|2|Avocados:1:ea;Eggs:2:ea;Bread:2:ea|Avocado on the counter until ripe, then fridge.|Mash avocado onto toast. Top with a fried or soft-boiled egg.
 bfast|bagel-cream-cheese|Bagel + cream cheese|4|4|0|5|0|Bagels:4:ea;Cream cheese:4:tbsp|Fridge for the cream cheese.|Toast and spread.
 bfast|oatmeal|Oatmeal + toppings|4|4|1|365|4|Oats:2:cup|Dry in a pantry. Cooked oatmeal keeps 4 days.|Simmer 1:2 with water or milk for 5 min.
 bfast|purchased-breakfast|Purchased breakfast|1|1|0|2|0|Purchased breakfast:1:ea|Fridge if not eaten right away.|Ready to eat.
@@ -102,8 +102,8 @@ meal|takeout|DIG / takeout|1|1|0|3|0|Takeout meal:1:ea|Fridge within 2 hours.|Re
 meal|frozen-meal|Frozen meal|1|1|0|180|0|Frozen meal:1:ea|Freezer.|Heat per the package.
 meal|quesadilla|Quesadilla|2|2|1|5|3|Tortillas:2:ea;Cheese:4:oz|Wrap cooked quesadillas well. Reheat in a pan.|Fill, then cook in a dry pan until crisp on both sides.
 meal|cereal-dinner|Cereal dinner|1|1|0|180|0|Cereal:1:cup;Milk:1:cup|Pantry and fridge.|Pour. No judgment.
-meal|eggs-toast|Eggs + toast|2|2|1|5|3|Eggs:4:ea;Bread:4:slice|Fridge for the eggs.|Scramble or fry. Toast the bread.
-meal|soup-bread|Soup + bread|2|2|1|365|4|Soup:2:can;Bread:2:slice|Pantry for cans. Fridge once opened.|Heat the soup. Toast the bread.
+meal|eggs-toast|Eggs + toast|2|2|1|5|3|Eggs:4:ea;Bread:4:ea|Fridge for the eggs.|Scramble or fry. Toast the bread.
+meal|soup-bread|Soup + bread|2|2|1|365|4|Soup:2:ea;Bread:2:ea|Pantry for cans. Fridge once opened.|Heat the soup. Toast the bread.
 meal|pasta-sauce|Pasta + sauce|4|4|1|365|5|Pasta:8:oz;Tomato sauce:2:cup|Cool, then refrigerate sauced pasta.|Boil pasta, warm sauce, combine.
 meal|stir-fry|Stir-fry|4|4|1|4|4|Chicken breast:1:ea;Mixed vegetables:1:lb;Soy sauce:3:tbsp|Cool quickly and refrigerate.|Slice chicken thin. Sear hot, add vegetables, finish with soy.
 meal|salad-bowl|Salad bowl|2|2|0|4|0|Salad greens:5:oz;Tomatoes:2:ea;Cucumbers:1:ea;Dressing:2:tbsp|Keep dressing separate.|Toss just before eating.
@@ -125,7 +125,7 @@ treat|ice-cream|Ice cream|4|4|0|90|0|Ice cream:1:pint|Freezer. Press parchment o
 treat|chocolate|Chocolate|6|6|0|180|0|Chocolate:6:oz|Cool, dry pantry.|Break off a square.
 treat|brownie|Brownie|8|8|0|5|0|Brownies:8:ea|Airtight on the counter.|Eat.
 treat|pastry|Pastry|2|2|0|2|0|Pastries:2:ea|Counter, loosely covered.|Warm briefly if you like.
-treat|chips|Chips|6|6|0|60|0|Chips:1:bag|Clip the bag shut.|Pour into a bowl so you can see how many.
+treat|chips|Chips|6|6|0|60|0|Chips:1:ea|Clip the bag shut.|Pour into a bowl so you can see how many.
 treat|candy|Candy|6|6|0|180|0|Candy:6:oz|Pantry.|Eat.
 treat|seasonal|Something seasonal|1|1|0|5|0|Seasonal treat:1:ea||
 treat|croissant|Croissant|2|2|0|2|0|Croissants:2:ea|Counter in paper, 2 days.|Warm at 300°F for 5 min.
@@ -142,7 +142,7 @@ function parseModules() {
     return {
       id: 'm' + (i + 1),
       cat: cat === 'bfast' ? 'meal' : cat, bf: cat === 'bfast', icon, name,
-      makes: +makes, per: +per, cook: cook === '1',
+      makes: +makes, wk: +makes, per: +per, cook: cook === '1',
       raw: +raw, cooked: +cooked,
       ing: ings.split(';').map(s => { const [n, a, u] = s.split(':'); return { n, a: +a, u }; }),
       storage: storage || '', method: method || '',
@@ -153,13 +153,13 @@ function parseModules() {
 // How many to pick from each step when planning a week (editable in Settings; 0 means no target).
 const DEFAULT_TARGETS = { veg: 3, pro: 2, fill: 2, flav: 2, fruit: 2, meal: 3, snack: 3, treat: 1 };
 
-// name|unit -> [package name, base units per package]
+// name|unit -> [package label, how much one purchasable unit holds, in that unit]. The app calls every package a "unit".
 const PACKS = {
   'Honey|tbsp': ['bottle', 24], 'Olive oil|tbsp': ['bottle', 34], 'Soy sauce|tbsp': ['bottle', 32],
   'Sesame oil|tbsp': ['bottle', 16], 'Tahini|tbsp': ['jar', 32], 'Pesto|tbsp': ['jar', 10],
   'Salsa|cup': ['jar', 3], 'Hummus|tbsp': ['tub', 20], 'Dressing|tbsp': ['bottle', 24],
   'Peanut butter|tbsp': ['jar', 36], 'Nut butter|tbsp': ['jar', 32], 'Eggs|ea': ['carton', 12],
-  'Bread|slice': ['loaf', 20], 'Tortillas|ea': ['pack', 10], 'Butter|tbsp': ['pack', 32],
+  'Bread|ea': ['loaf', 20], 'Tortillas|ea': ['pack', 10], 'Butter|tbsp': ['pack', 32],
   'Tomato sauce|cup': ['jar', 3], 'Parmesan|tbsp': ['tub', 24], 'Cream cheese|tbsp': ['tub', 16],
   'Greek yogurt|cup': ['tub', 4], 'Milk|cup': ['carton', 8], 'Rice|cup': ['bag', 12],
   'Pasta|oz': ['box', 16], 'Hot sauce|tsp': ['bottle', 48], 'Oats|cup': ['canister', 14],
@@ -173,3 +173,20 @@ const LIFE = {
   'Greek yogurt': 14, 'Milk': 7, 'Rice': 365, 'Pasta': 365, 'Hot sauce': 365, 'Oats': 365,
   'Cheese': 21, 'Garlic': 30, 'Lemons': 21, 'Celery': 14, 'Broth': 5, 'Crackers': 90,
 };
+
+// Ingredient name -> icon, for ingredients that don't have a module of their own. First match wins.
+const ICON_HINTS = [
+  [/chicken/, 'chicken'], [/egg/, 'eggs'], [/salmon|fish/, 'salmon'], [/tofu/, 'tofu'], [/turkey|deli/, 'turkey'],
+  [/chickpea|garbanzo/, 'chickpeas'], [/green bean/, 'green-beans'], [/black bean|beans/, 'black-beans'], [/lentil/, 'lentils'], [/hummus|baba/, 'hummus'],
+  [/honey|hot sauce/, 'hot-honey'], [/peanut|nut butter|almond/, 'apple-pb'], [/olive oil|lemon|lime|vinegar/, 'lemon-olive-oil'], [/butter|garlic/, 'garlic-butter'],
+  [/soy|sesame/, 'soy-sesame'], [/tahini/, 'tahini-lemon'], [/pesto|basil/, 'pesto'], [/salsa/, 'salsa'], [/tomato sauce|pasta sauce|marinara/, 'tomato-sauce'],
+  [/cream cheese|bagel/, 'bagel-cream-cheese'], [/parmesan|feta|cheese/, 'feta'], [/greek yogurt|yogurt|sour cream/, 'greek-yogurt'], [/milk|cereal/, 'cereal-milk'],
+  [/bread|toast/, 'bread'], [/tortilla/, 'tortillas'], [/pita/, 'pita'], [/rice/, 'rice'], [/quinoa/, 'quinoa'], [/couscous/, 'couscous'],
+  [/pasta|linguine|spaghetti|noodle|macaroni/, 'pasta'], [/oat|granola/, 'oatmeal'], [/sweet potato/, 'sweet-potato'], [/potato/, 'potatoes'],
+  [/banana/, 'bananas'], [/apple/, 'apples'], [/strawberr/, 'strawberries'], [/berr/, 'blueberries'], [/grape/, 'grapes'], [/peach|nectarine/, 'peaches'],
+  [/mandarin|orange|citrus/, 'mandarins'], [/melon/, 'melon'], [/carrot/, 'carrots'], [/broccoli/, 'broccoli'], [/butternut|squash/, 'butternut-squash'],
+  [/spinach/, 'spinach'], [/parsley|cilantro|herb|kale|greens|lettuce|celery|onion|leek|scallion/, 'salad-greens'], [/cucumber/, 'cucumber'], [/tomato/, 'tomatoes'],
+  [/pepper(?!corn)/, 'bell-peppers'], [/brussels/, 'brussels-sprouts'], [/cumin|spice|salt|paprika|cinnamon|oregano|seed|pepper/, 'other-grain'],
+  [/soup|broth|stock/, 'chicken-noodle-soup'], [/cookie/, 'cookies'], [/chip/, 'chips'], [/popcorn/, 'popcorn'], [/trail|nut/, 'trail-mix'],
+  [/ice cream/, 'ice-cream'], [/chocolate/, 'chocolate'], [/candy/, 'candy'],
+];

@@ -1,5 +1,5 @@
 // Offline cache. Bump VERSION whenever you change any file so phones pick up the update.
-const VERSION = 'meal-loop-v23';
+const VERSION = 'meal-loop-v53';
 const SHELL = ['./', 'index.html', 'styles.css', 'data.js', 'app.js', 'manifest.webmanifest',
   'assets/header1.jpg', 'assets/header2.jpg', 'assets/header3.jpg', 'assets/fridge.png',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png',
