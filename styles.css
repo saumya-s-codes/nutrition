@@ -709,3 +709,157 @@ button.flag { display: inline-block; width: fit-content; max-width: 100%; text-a
 .srow .schip .ico { width: 24px; height: 24px; flex: none; }
 .srow .schip span { min-width: 0; overflow-wrap: anywhere; }
 .srow .schev { width: 28px; height: 40px; color: var(--muted); } .srow .schev .svg { width: 20px; height: 20px; }
+
+/* v2.18 date boxes: the wrapper is the field and clips the input, so an iPhone date input can never push past its half of the row */
+.dbox { display: block; min-width: 0; max-width: 100%; height: 44px; overflow: hidden; background: var(--field); border: 1.5px solid var(--line); border-radius: 12px; }
+.dbox:focus-within { border-color: var(--green); }
+.panel .dates2 .dbox input[type=date] { display: block; width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; height: 41px; margin: 0; padding: 0 4px; border: 0; background: none; border-radius: 0; font-size: 15px; font-weight: 600; text-align: center; }
+
+/* v2.19 Eaten list on Eat */
+.eatenlist { display: grid; gap: 2px; margin: 4px 0 6px; }
+.eatenrow { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center; padding: 5px 6px; border-radius: 12px; text-align: left; color: var(--tx); }
+.eatenrow .ico { width: 32px; height: 32px; }
+.eatenrow .ename { font-weight: 600; font-size: 15px; }
+.edot { display: inline-flex; align-items: center; gap: 7px; font-weight: 700; font-size: 15px; color: var(--green); }
+.edot i { width: 10px; height: 10px; border-radius: 50%; background: var(--green); }
+
+/* v2.20 servings dots: filled = eaten this week, empty = left */
+.dots { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 5px; max-width: 120px; }
+.dots i, .edot i { width: 12px; height: 12px; border-radius: 50%; box-sizing: border-box; border: 2px solid var(--green); background: none; }
+.dots i.on, .edot i.on { background: var(--green); }
+
+/* v2.21 text boxes grow to fit */
+.panel textarea { resize: none; overflow: hidden; min-height: 84px; line-height: 1.4; }
+
+/* v2.22 rename field on the fridge item sheet */
+.namefld { display: grid; gap: 4px; margin: 8px 0 2px; font-size: 13px; font-weight: 600; color: var(--muted); }
+
+/* v2.23 add-to-fridge icon */
+.iconlist[hidden] { display: none; }
+.itemrow { display: grid; grid-template-columns: 56px 1fr; gap: 10px; align-items: end; }
+.itemrow .iconpick { width: 56px; height: 56px; }
+
+/* v2.24 the item you just added is ringed so it is easy to spot */
+.tile.fresh { border-color: var(--green); box-shadow: 0 0 0 3px var(--green-soft); }
+
+/* v2.26 Log food: compact, nothing squashed */
+.iconlist { flex: none; }
+.logpick { display: flex; flex-wrap: nowrap; gap: 6px; flex: none; max-height: none; overflow-x: auto; overflow-y: hidden; padding: 2px 0 6px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.logpick::-webkit-scrollbar { display: none; }
+.logpick .mchip { flex: none; white-space: nowrap; }
+.logname { display: grid; grid-template-columns: 56px 1fr; gap: 10px; align-items: end; flex: none; }
+.logname .iconpick { width: 56px; height: 56px; display: grid; place-items: center; padding: 0; }
+.logday { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 8px; align-items: center; flex: none; }
+.logday .chip { display: grid; place-items: center; height: 44px; padding: 0 14px; font-size: 14px; font-weight: 650; }
+.logrow { display: grid; grid-template-columns: 1.3fr 1fr .8fr; gap: 8px; flex: none; }
+.logrow label, .logname label { min-width: 0; }
+.panel .dbox input[type=date], .panel .dbox input[type=time] { display: block; width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; height: 41px; margin: 0; padding: 0 4px; border: 0; background: none; border-radius: 0; font-size: 15px; font-weight: 600; text-align: center; }
+.logrow .dbox, .logday .dbox { height: 44px; }
+.logday .chip { display: flex; align-items: center; justify-content: center; }
+.logrow { grid-template-columns: 1.05fr 1.3fr .75fr; }
+.logrow .dbox input[type=time] { padding: 0 2px; font-size: 14.5px; }
+
+/* v2.27 date/time boxes: our own centered text, invisible native input on top */
+.dbox { position: relative; display: flex; align-items: center; justify-content: center; height: 44px; min-width: 0; overflow: hidden; background: var(--field); border: 1.5px solid var(--line); border-radius: 12px; }
+.dbox .dtxt { font-size: 15px; font-weight: 600; color: var(--tx); white-space: nowrap; pointer-events: none; }
+.dbox .dtxt.empty { color: var(--muted); font-weight: 400; }
+.panel .dbox input[type=date], .panel .dbox input[type=time], .panel .dates2 .dbox input[type=date] { position: absolute; inset: 0; display: block; width: 100%; height: 100%; max-width: none; margin: 0; padding: 0; border: 0; opacity: 0; font-size: 16px; }
+.dbox:focus-within { border-color: var(--green); }
+/* the name at the top of a fridge ingredient is the field */
+.sheethead h2 { min-width: 0; }
+.panel input.titleinput { flex: 1; min-width: 0; width: 100%; font: inherit; font-family: var(--serif); font-size: inherit; font-weight: inherit; color: inherit; background: none; border: 0; border-bottom: 1.5px dashed var(--line); border-radius: 0; padding: 2px 0; }
+.panel input.titleinput:focus { outline: none; border-bottom-color: var(--green); }
+.sheethead h2 { display: flex; align-items: center; gap: 12px; }
+
+/* v2.28 fridge item sheet: count stepper on top, one card per set of dates, one remove area */
+.countstep { margin: 4px 0 2px; }
+.batch { padding: 10px 12px 8px; margin-bottom: 8px; }
+.batch .dates2 { margin-bottom: 8px; }
+.keepline { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.keepline .amt { font-family: var(--serif); font-size: 20px; color: var(--gt); white-space: nowrap; }
+.keepline .keepsrow { margin: 0; }
+.btn.wide { width: 100%; margin-top: 8px; }
+.panel .batch { background: var(--card); border: 1.5px solid var(--line); border-radius: 16px; padding: 10px 12px; margin-bottom: 8px; }
+.panel .keepline .keepsrow { display: flex; flex-direction: row; align-items: center; gap: 8px; margin: 0; white-space: nowrap; }
+.panel .keepline .withsuf { display: inline-flex; align-items: center; gap: 6px; width: auto; }
+.panel .keepline .withsuf input { width: 64px; text-align: center; padding: 8px 6px; }
+.keepline .amt { display: inline-grid; place-items: center; min-width: 44px; height: 36px; padding: 0 12px; border-radius: 18px; background: var(--green-soft); font-family: var(--sans); font-size: 16px; font-weight: 700; color: var(--green); }
+
+/* v2.29 count on each card; + at the top right adds a new purchase */
+.sechead { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+.sechead h4 { flex: 1; border-bottom: 0; margin: 0; padding-bottom: 6px; }
+.sechead .icon-btn { width: 36px; height: 36px; background: var(--green-soft); color: var(--green); border-radius: 50%; }
+.cstep { display: inline-flex; align-items: center; gap: 6px; }
+.cstep button { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--soft2, #efe9dd); color: var(--tx); }
+.cstep button .svg { width: 16px; height: 16px; }
+.cstep .amt { min-width: 40px; background: none; padding: 0 2px; font-family: var(--serif); font-size: 19px; color: var(--tx); }
+.panel .batch.fresh { border-color: var(--green); box-shadow: 0 0 0 3px var(--green-soft); }
+.sechead h4 { font-family: var(--sans); font-size: 11.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin: 8px 0 0; padding-bottom: 5px; }
+/* Saved shows as a quiet check only, so a long editable title keeps its room */
+.savedtag { font-size: 0; gap: 0; } .savedtag .svg { width: 20px; height: 20px; }
+
+/* v2.30 pop-up grids on Log food */
+.weekbtn { display: flex; align-items: center; gap: 8px; width: 100%; height: 44px; padding: 0 14px; border-radius: 14px; background: var(--green-soft); color: var(--green); font-weight: 700; font-size: 15px; flex: none; }
+.weekbtn span { flex: 1; text-align: left; } .weekbtn .svg { width: 20px; height: 20px; }
+.popmask { position: absolute; inset: 0; z-index: 30; background: rgba(20,32,26,.38); animation: fade .15s; }
+.popmenu { position: absolute; z-index: 31; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(92%, 460px); max-height: 80dvh; display: flex; flex-direction: column; background: var(--bg); border-radius: 22px; box-shadow: 0 20px 50px rgba(0,0,0,.3); padding: 10px 12px 14px; }
+.pophead { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 8px; }
+.pophead b { font-family: var(--serif); font-size: 19px; }
+.pophead .icon-btn { width: 36px; height: 36px; }
+.popgrid { display: grid; gap: 8px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.popgrid.sides { grid-template-columns: repeat(3, 1fr); }
+.popgrid.sides button { display: grid; justify-items: center; align-content: start; gap: 4px; padding: 10px 4px 8px; min-height: 92px; border-radius: 16px; background: var(--card); border: 1.5px solid var(--line); font-size: 12.5px; font-weight: 650; line-height: 1.15; text-align: center; color: var(--tx); }
+.popgrid.sides .ico { width: 44px; height: 44px; }
+.popgrid.icons { grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.popgrid.icons button { padding: 3px; border-radius: 10px; } .popgrid.icons button.on { background: var(--green-soft); }
+.popgrid.icons .ico { width: 100%; height: 38px; }
+.popmenu { max-height: 84dvh; }
+.popgrid.icons { grid-template-columns: repeat(8, 1fr); gap: 2px; }
+.popgrid.icons button { padding: 2px; }
+.popgrid.icons .ico { height: 34px; }
+
+/* v2.31 takeout leftovers */
+.two.one { grid-template-columns: 1fr; }
+.popscroll { overflow-y: auto; display: grid; gap: 10px; -webkit-overflow-scrolling: touch; }
+.poplabel { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 2px 4px 0; }
+.popgrid.sides button small { color: var(--muted); font-weight: 600; font-size: 11.5px; }
+.trow .einfo small.muted { color: var(--muted); font-size: 12.5px; }
+#ai-kind { margin: 2px 0 4px; }
+.popmenu .popscroll { min-height: 0; }
+.panel [hidden], #sheet [hidden] { display: none !important; }
+
+/* v2.32 scrolling stays inside the sheet or pop-up, never the page behind */
+body.lock #view { overflow: hidden; }
+.panel, .pbody, .popscroll, .popgrid, .iconlist { overscroll-behavior: contain; }
+.backdrop, .popmask { touch-action: none; }
+.popscroll { touch-action: pan-y; }
+.popscroll .popgrid { overflow: visible; }
+
+/* v2.36 no zooming: iOS zooms into any field under 16px, so every field is at least 16px */
+html { -webkit-text-size-adjust: 100%; touch-action: manipulation; }
+input:not([type=checkbox]):not([type=radio]):not(.titleinput), select, textarea { font-size: 16px !important; }
+
+/* v2.37 icons sit in the exact middle of their buttons (an inline image leaves a gap below it) */
+.itemrow .iconpick { display: grid; place-items: center; padding: 0; }
+.itemrow .iconpick .ico, .iconlist button .ico, .popgrid.icons button .ico { display: block; }
+.iconlist button, .popgrid.icons button { display: grid; place-items: center; }
+
+/* v2.38 swipe a diary entry left to delete */
+.swcard { position: relative; touch-action: pan-y; -webkit-user-select: none; user-select: none; }
+.dsw { margin: 0 0 10px; border-radius: 18px; }
+.dsw + .dsw { border-top: 0; }
+.dsw .entry { margin: 0; }
+.dsw .swdel { border-radius: 0 18px 18px 0; }
+
+/* v2.39 diary: a long swipe left deletes; the red strip is only what shows behind the card */
+.dsw .swdel { left: 0; right: 0; width: auto; justify-items: end; padding-right: 26px; grid-auto-flow: row; }
+.dsw .swdel { pointer-events: none; }
+
+/* v2.41 Eat rows: a beige card so they don't look bare on the cream page */
+:root { --rowbg: #f0e7d8; --rowline: #e0d4bf; }
+@media (prefers-color-scheme: dark) { :root { --rowbg: #213029; --rowline: #324239; } }
+.trow { background: var(--rowbg); border-color: var(--rowline); }
+.trow.red { border-left-color: var(--red); } .trow.yellow { border-left-color: #e3b44a; }
+.trow .ibtn.met, .trow .ibtn:disabled { background: rgba(70, 55, 30, .12); color: var(--muted); }
+@media (prefers-color-scheme: dark) { .trow .ibtn.met, .trow .ibtn:disabled { background: rgba(255,255,255,.08); } }
+.trow .icon-btn:not(.starred) { color: #7c786c; }

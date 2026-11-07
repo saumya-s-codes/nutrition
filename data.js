@@ -176,6 +176,7 @@ const LIFE = {
 
 // Ingredient name -> icon, for ingredients that don't have a module of their own. First match wins.
 const ICON_HINTS = [
+  [/kati|roll|wrap|burrito|paratha|roti/, 'pita'],
   [/chicken/, 'chicken'], [/egg/, 'eggs'], [/salmon|fish/, 'salmon'], [/tofu/, 'tofu'], [/turkey|deli/, 'turkey'],
   [/chickpea|garbanzo/, 'chickpeas'], [/green bean/, 'green-beans'], [/black bean|beans/, 'black-beans'], [/lentil/, 'lentils'], [/hummus|baba/, 'hummus'],
   [/honey|hot sauce/, 'hot-honey'], [/peanut|nut butter|almond/, 'apple-pb'], [/olive oil|lemon|lime|vinegar/, 'lemon-olive-oil'], [/butter|garlic/, 'garlic-butter'],

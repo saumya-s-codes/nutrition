@@ -185,6 +185,7 @@ Planning (reorder categories, pick targets per category, 0 = "Any"); What the co
 - They like **icons**, **collapsible sections**, **cards**, direct manipulation, and removing buttons/numbers that feel fussy. They dislike steppers, counts on buttons, Save buttons and anything that needs explaining.
 - Terminology they chose: **sides**, **Needs attention**, **unit** (what you buy), **each** (count), **eat by**, "Recipe makes / Eat per week / Batch size".
 - Be honest about what could not be verified (see section 8). Don't claim iPhone behavior was tested.
+- **Rebuild and present the demo (`meal-loop.html`) after every change.** Only build and present the zip when the user says the code is final.
 
 ---
 
@@ -272,3 +273,13 @@ The user found the whole app too complicated. Agreed design rules for **every** 
 **Done in 2.7: Eat page only.** Today only (no day strip). One quiet "Use soon" line at the top (worst side + "+N"; tap to expand, tap an item for the why sheet). Flat list of this week's picked sides, each with **Eaten** / **Cooked** and a **star**. Stars are optional: up to 3, stored in `S.settings.stars = {d, ids}`, ignored when `d` is not today (so they reset by themselves). With stars, the page shows only starred sides ("Only picks" / "This week" link toggles). The list stays open while starring and goes quiet at the 3rd star or when you return to the tab. Removed from Eat: meal slots, Auto-plan, swipe rows, tallies, colored sections. The info sheet (tap a name) has **Counts** (tally sheet) and **Edit**. `autoPlan`, `entryRm`, swipe code and plan entries still exist in code but nothing on Eat uses them.
 
 **Next, in this order:** Shopping (checklist only), Fridge (behind a small link), Plan, Settings (icon row for categories, icon buttons for backup/reset, drop the colors explainer), item sheets (icon fields in a row). Ask the user to check each on the phone before moving on.
+
+
+## 12. Version 2.31: takeout leftovers
+
+Add to fridge has an **Ingredient | Leftovers** switch. Leftovers = servings you can eat (default keeps 3 days). It creates a hidden one-off module (`oneoff: true`, id `x…`, `cat: 'meal'`, no ingredients) with a cooked batch in `S.cooked`, so the Fridge Leftovers section, expiry colors, eating (soonest first) and diary entries all work unchanged. One-offs never show in the week picker or this week's list. Same name added twice merges when the sheet closes (`mergeOneoff`). Eat has a **Leftovers** section (today and past days, even with no week planned) with one Eaten button each. Log food's **Pick a food** pop-up has This week and Leftovers groups. Switching the type after typing removes what the sheet made and recreates it (`dropCreated`).
+
+Version 2.34 note: the Save leftovers stepper in Log food, the always-on Add leftovers tile and the + beside Fridge > Leftovers (tried in 2.33) were removed on request. Leftovers are added only through Add to fridge > Leftovers.
+
+Version 2.40: **batch size is gone.** The Cooked button adds the whole recipe (`makes` servings). The editor's Servings section has two fields: Recipe makes and Eat per week. `module.per` is kept in the data (set equal to `makes` on save) but nothing reads it. The Cooked button still greys out once this week's goal is covered.
+The cart follows the same rule: for sides that need cooking it buys whole recipes (`needFrac(m)` = whole batches of `makes`), so Cooked never comes up short. Sides you don't cook (apples) still scale per serving.

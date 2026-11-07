@@ -18,7 +18,7 @@ const mondayOf = s => { const d = parseIso(s); const k = (d.getDay() + 6) % 7; d
 const plural = (n, w) => `${nice(n)} ${w}${Math.abs(n - 1) < 1e-9 ? '' : 's'}`;
 
 // ---------- state ----------
-const APP_VERSION = '2.17'; // keep in step with VERSION in sw.js
+const APP_VERSION = '2.41'; // keep in step with VERSION in sw.js
 const KEY = 'mealloop.v1';
 const fresh = () => ({
   v: 9, modules: parseModules(), week: null, history: [], fridge: [], cooked: {},
@@ -167,11 +167,13 @@ function remaining(m) {
 }
 
 // ---------- shopping cart ----------
+// Things you cook are cooked as the whole recipe, so the cart buys whole recipes too (a 4-serving recipe you eat 2 a week from still needs 4 servings of ingredients)
+const needFrac = m => { const r = remaining(m); return m.cook && r > 0.01 ? Math.ceil(r / m.makes - 1e-9) : r / m.makes; };
 function cartLines() {
   const need = new Map();
   if (S.week) for (const id of S.week.picks) {
     const m = mod(id); if (!m) continue;
-    const frac = remaining(m) / m.makes;
+    const frac = needFrac(m);
     for (const i of m.ing) {
       const k = ikey(i.n, i.u);
       const row = need.get(k) || { key: k, name: i.n, unit: baseUnit(i.u), need: 0, forMods: [] };
@@ -270,7 +272,7 @@ function tsFor(date) {
   const now = new Date(); const d = parseIso(date); d.setHours(now.getHours(), now.getMinutes(), 0, 0); return d.getTime();
 }
 function doCook(mid, count) {
-  const m = mod(mid); const n = count || m.per;
+  const m = mod(mid); const n = count || m.makes;
   const t = ensureTally(mid);
   let short = [];
   for (const i of m.ing) { const left = consume(ikey(i.n, i.u), toBase(i.a, i.u) * n / m.makes); if (left > 0.01) short.push(i.n); }
@@ -294,6 +296,18 @@ function doEat(mid, date, slot, entryId) {
   const last = S.diary.find(d => d.type === 'eat' && d.mid === mid && d.slot === slot && iso(new Date(d.ts)) === date);
   if (last) { last.servings++; (last.src = last.src || []).push(src); }
   else S.diary.push({ id: uid(), ts, type: 'eat', mid, name: m.name, icon: m.icon, servings: 1, slot, rating: 0, notes: '', src: [src] });
+}
+// Takeout and other one-off leftovers: a hidden module (never in the week picker) whose cooked servings live in the fridge
+const leftoverMods = () => S.modules.filter(m => m.oneoff && cookedTotal(m.id) > 0.001);
+function newOneoff(name, icon) {
+  const m = { id: 'x' + uid(), name, cat: 'meal', bf: false, icon: icon || 'other-meal', makes: 1, wk: 0, per: 1, cook: false, raw: 3, cooked: 3, ing: [], storage: '', method: '', oneoff: true };
+  S.modules.push(m); return m;
+}
+function mergeOneoff(mid) {   // same name added twice = one leftover entry
+  const m = mod(mid); if (!m) return;
+  const twin = S.modules.find(x => x.oneoff && x.id !== mid && normName(x.name) === normName(m.name)); if (!twin) return;
+  S.cooked[twin.id] = (S.cooked[twin.id] || []).concat(S.cooked[mid] || []); delete S.cooked[mid]; twin.icon = m.icon;
+  S.modules = S.modules.filter(x => x.id !== mid); ui.fresh = 'm:' + twin.id;
 }
 function eatenCount(mid) {
   const t0 = parseIso(S.week ? S.week.start : todayIso()).getTime();
@@ -406,6 +420,28 @@ const fold = (k, title, body, dflt) => {
   const o = ui.sheet && ui.sheet.open, open = o && k in o ? !!o[k] : !!dflt;
   return `<section class="sec"><button class="acc" data-a="toggleFold" data-k="${k}" data-d="${dflt ? 1 : 0}" aria-expanded="${open}"><span><b>${title}</b></span>${svg(open ? 'up' : 'down')}</button>${open ? `<div class="accbody">${body}</div>` : ''}</section>`;
 };
+// Date and time boxes: we draw the text ourselves, centered, and lay the real (invisible) input on top so a tap still opens the phone's picker. No more iOS alignment quirks.
+const fmtDbox = (kind, v) => !v ? '—' : kind === 'time' ? new Date('1970-01-01T' + v).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : parseIso(v).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+const dbx = (kind, attrs, v) => `<span class="dbox" data-kind="${kind}"><span class="dtxt${v ? '' : ' empty'}">${fmtDbox(kind, v)}</span><input type="${kind}" ${attrs} value="${v || ''}"></span>`;
+function syncDbox() { document.querySelectorAll('.dbox').forEach(b => { const i = b.querySelector('input'), t = b.querySelector('.dtxt'); if (i && t) { t.textContent = fmtDbox(b.dataset.kind, i.value); t.classList.toggle('empty', !i.value); } }); }
+['input', 'change'].forEach(ev => document.addEventListener(ev, () => requestAnimationFrame(syncDbox), true));
+// pop-up grids: pick a side from this week, or an icon, without scrolling a long list
+function popHtml() {
+  const s = ui.sheet, L = ui.log; if (!s || s.t !== 'logfood' || !L) return '';
+  const head = (title, a) => `<div class="pophead"><b>${title}</b><button class="icon-btn" data-a="${a}" aria-label="Close">${svg('x')}</button></div>`;
+  if (L.sidesOpen) {   // your whole fridge in one place: this week's sides, leftovers, and every ingredient
+    const wk = activeMods(), lm = S.modules.filter(m => cookedTotal(m.id) > 0.001 && !wk.includes(m)), ings = fridgeLedger().ings;
+    const left = m => cookedTotal(m.id) > 0.001 ? `<small>${nice(cookedTotal(m.id))} left</small>` : '';
+    const tile = (m, extra) => `<button data-a="logSide" data-m="${m.id}">${ico(m.icon)}<span>${esc(m.name)}</span>${extra || ''}</button>`;
+    const grp = (label, tiles) => tiles.length ? `<div class="poplabel">${label}</div><div class="popgrid sides">${tiles.join('')}</div>` : '';
+    return `<div class="popmask" data-a="logSides"></div><div class="popmenu" role="dialog">${head('Pick a food', 'logSides')}<div class="popscroll">
+      ${grp('This week', wk.map(m => tile(m, left(m))))}
+      ${grp('Leftovers', lm.map(m => tile(m, left(m))))}
+      ${grp('Ingredients', ings.map(i => `<button data-a="logIng" data-k="${esc(i.key)}">${ico(i.icon)}<span>${esc(i.name)}</span><small>${fmtBase(i.qty, i.unit)}</small></button>`))}</div></div>`;
+  }
+  if (L.iconOpen) return `<div class="popmask" data-a="logIcons"></div><div class="popmenu" role="dialog">${head('Choose an icon', 'logIcons')}<div class="popgrid icons">${ALL_ICONS.map(k => `<button class="${k === L.icon ? 'on' : ''}" data-a="setLogIcon" data-k="${k}" aria-label="${k}">${ico(k)}</button>`).join('')}</div></div>`;
+  return '';
+}
 const sheetHead = t => `<div class="sheethead"><h2>${t}</h2><span id="savedchip" class="savedtag ${ui.sheet && ui.sheet.saved ? 'ok' : ''}" role="status">${svg('check')}Saved</span></div>`;
 
 // ---------- toast ----------
@@ -488,11 +524,11 @@ function pickerView(lines) {
     <div class="pickbar"><button class="btn" data-a="prevStep">Back</button><button class="btn primary grow" data-a="lockWeek">${svg('check')}Lock in week</button></div>`;
   }
   const c = OC[ui.step], tgt = targetFor(c.id);
-  const ms = S.modules.filter(m => m.cat === c.id);
+  const ms = S.modules.filter(m => m.cat === c.id && !m.oneoff);
   const n = w.picks.filter(id => (mod(id) || {}).cat === c.id).length;
   const cards = ms.map(m => {
     const on = w.picks.includes(m.id);
-    const miss = on && m.ing.some(i => stock(ikey(i.n, i.u)) < toBase(i.a, i.u) * remaining(m) / m.makes - 0.001);
+    const miss = on && m.ing.some(i => stock(ikey(i.n, i.u)) < toBase(i.a, i.u) * needFrac(m) - 0.001);
     return `<div class="card ${on ? 'on' : ''}" style="--bg:${c.bg}" data-a="pick" data-m="${m.id}">
       <button class="cinfo" data-a="info" data-m="${m.id}" aria-label="Details for ${esc(m.name)}">${svg('info')}</button>
       <span class="ccheck ${on ? 'on' : ''}">${on ? svg('check') : ''}</span>
@@ -538,11 +574,11 @@ function fridgeLedger() {
     const m = mod(id), items = bs.map(b => ({ n: b.n, exp: dayNum(b.date) + (b.life ?? m.cooked) }));
     const good = items.filter(x => x.exp >= T), soonest = Math.min(...items.map(x => x.exp));
     return { m, n: bs.reduce((a, x) => a + x.n, 0), left: soonest - T, red: soonest < T, yellow: soonest >= T && !!paceOf(good, T) };
-  }).sort((a, b) => a.left - b.left);
+  }).sort((a, b) => a.m.name.localeCompare(b.m.name, undefined, { sensitivity: 'base' }));
   const byKey = {};
   S.fridge.forEach(i => { const o = byKey[i.key] = byKey[i.key] || { key: i.key, name: i.name, unit: i.unit, qty: 0, left: Infinity }; o.qty += i.qty; o.left = Math.min(o.left, dayNum(i.start) + i.life - T); });
   const used = new Set(S.modules.flatMap(m => m.ing.map(i => ikey(i.n, i.u))));
-  const ings = Object.values(byKey).map(o => ({ ...o, icon: ingIcon(o.name), red: o.left < 0, yellow: o.left >= 0 && o.left <= SOON_DAYS, orphan: !used.has(o.key) })).sort((a, b) => a.left - b.left || a.name.localeCompare(b.name));
+  const ings = Object.values(byKey).map(o => ({ ...o, icon: ingIcon(o.name), red: o.left < 0, yellow: o.left >= 0 && o.left <= SOON_DAYS, orphan: !used.has(o.key) })).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));   // A to Z, easy to scan
   return { leftovers, ings };
 }
 function fridgeView() {
@@ -554,9 +590,9 @@ function fridgeView() {
   return `<section class="fridge">
     <div class="fridge-art"><img src="assets/fridge.png" alt=""><div><h2>In your fridge</h2><p class="muted">${leftovers.length} leftover${leftovers.length === 1 ? '' : 's'} · ${ings.length} ingredient${ings.length === 1 ? '' : 's'}</p><div class="fbtns"><button class="btn small primary" data-a="addItem">${svg('plus')}Add item</button><button class="btn small" data-a="fridgeCheck">${svg('check')}Check fridge</button></div></div></div>
     <h3 class="sub">Leftovers <small class="muted">cooked servings</small></h3>
-    ${leftovers.length ? `<div class="tiles">${leftovers.map(x => `<button class="tile ${lvl(x)}" data-a="openFood" data-m="${esc(x.m.id)}" data-k="">${ico(x.m.icon)}<b>${esc(x.m.name)}</b>${chip(`${nice(x.n)} cooked`, x)}</button>`).join('')}</div>` : '<p class="muted pad">Nothing cooked yet. Tap Cooked on the Eat page.</p>'}
+    ${leftovers.length ? `<div class="tiles">${leftovers.map(x => `<button class="tile ${lvl(x)}${ui.fresh === 'm:' + x.m.id ? ' fresh' : ''}" data-a="openFood" data-m="${esc(x.m.id)}" data-k="">${ico(x.m.icon)}<b>${esc(x.m.name)}</b>${chip(`${nice(x.n)} cooked`, x)}</button>`).join('')}</div>` : '<p class="muted pad">Nothing cooked yet. Tap Cooked on the Eat page.</p>'}
     <h3 class="sub">Ingredients <small class="muted">${orphans ? `${orphans} outside your recipes ${orphans === 1 ? 'is' : 'are'} expiring` : 'what you bought'}</small></h3>
-    ${ings.length ? `<div class="tiles">${ings.map(i => `<button class="tile ${lvl(i)}" data-a="openFood" data-k="${esc(i.key)}" data-m="">${ico(i.icon)}<b>${esc(i.name)}</b>${chip(fmtBase(i.qty, i.unit), i)}</button>`).join('')}</div>` : '<p class="muted pad">Empty. Add what you buy from the Shopping tab.</p>'}
+    ${ings.length ? `<div class="tiles">${ings.map(i => `<button class="tile ${lvl(i)}${ui.fresh === i.key ? ' fresh' : ''}" data-a="openFood" data-k="${esc(i.key)}" data-m="">${ico(i.icon)}<b>${esc(i.name)}</b>${chip(fmtBase(i.qty, i.unit), i)}</button>`).join('')}</div>` : '<p class="muted pad">Empty. Add what you buy from the Shopping tab.</p>'}
   </section>`;
 }
 
@@ -564,7 +600,7 @@ function fridgeView() {
 function btnsFor(m, mode) {   // mode: 'today' (Eaten + Cooked), 'past' (Eaten only, records on that day), 'future' (no buttons, just plan with stars)
   if (mode === 'future') return '';
   // Icon buttons: fork and knife = Eaten, pot = Cooked. Cooked never goes past this week's goal; once covered it is greyed out.
-  const n = Math.min(m.per, Math.max(1, Math.ceil(remaining(m) - 1e-9))), met = isPicked(m.id) && remaining(m) <= 0.01;
+  const n = m.makes, met = isPicked(m.id) && remaining(m) <= 0.01;   // Cooked adds the whole recipe
   const cook = !m.cook ? '<span class="gap g-cook"></span>'
     : met ? `<button class="ibtn cook met" data-m="${m.id}" disabled aria-label="Cooked. This week's goal is already cooked.">${svg('pot')}</button>`
     : `<button class="ibtn cook" data-a="cook" data-m="${m.id}" aria-label="Cooked: ${n} serving${n > 1 ? 's' : ''} of ${esc(m.name)}">${svg('pot')}</button>`;
@@ -572,13 +608,20 @@ function btnsFor(m, mode) {   // mode: 'today' (Eaten + Cooked), 'past' (Eaten o
 }
 const MAX_STARS = 3;
 function starIds(date) { const sd = S.settings.starDays || {}; return (sd[date || ui.date] || []).filter(isPicked); }   // stars belong to a day, so plan tomorrow by starring on tomorrow
+// one dot per serving for the week: filled = eaten so far, empty = still to eat (a manual log has no weekly goal, so it shows a dot and a number)
+function eatenDots(e) {
+  const m = e.mid && mod(e.mid);
+  if (!m || !isPicked(m.id)) return `<span class="edot"><i class="on"></i>${nice(e.n)}</span>`;
+  const done = Math.floor(eatenCount(m.id) + 0.001), total = Math.max(Math.ceil(weekServings(m)), done);
+  return `<span class="dots" role="img" aria-label="${done} of ${total} this week">${Array.from({ length: total }, (_, i) => `<i class="${i < done ? 'on' : ''}"></i>`).join('')}</span>`;
+}
 function eatView() {
   const today = todayIso(); ui.date = ui.eatDate || today;
   const mode = ui.date === today ? 'today' : ui.date < today ? 'past' : 'future';
   const act = activeMods(), cart = cartMap(), stars = mode === 'past' ? [] : starIds();
   const sc = {}, st = m => (sc[m.id] = sc[m.id] === undefined ? sideStatus(m, ui.date, cart) : sc[m.id]);
   let body = '';
-  if (!act.length) {
+  if (!act.length && !leftoverMods().length) {
     body = `<section class="empty">${ico('stir-fry', 'ico xl')}<h2>Nothing planned yet</h2><p>Pick your week on the Plan tab.</p><button class="btn primary" data-a="tab" data-t="plan">Go to Plan</button></section>`;
   } else {
     const soon = act.map(m => ({ m, u: st(m) })).filter(x => x.u).sort((a, b) => rank(b.u) - rank(a.u));
@@ -602,6 +645,18 @@ function eatView() {
     const dayName = mode === 'today' ? 'Today' : dayWord(dayNum(ui.date) - dayNum(today)).replace(/^./, c => c.toUpperCase());
     const head = (k, name, n, open, badges) => `<button class="acc" data-a="toggleGroup" data-k="${k}" aria-expanded="${open}"><span><b>${name}</b><small>${n}</small></span>${badges || ''}${svg(open ? 'up' : 'down')}</button>`;
     if (picks.length) { const open = ui.grp && '_picks' in ui.grp ? ui.grp._picks : true; body += `<section class="tgroup">${head('_picks', dayName, picks.length, open)}${open ? `<div class="tlist">${picks.map(row).join('')}</div>` : ''}</section>`; }
+    const eaten = {};   // what you ate on this day, one line per side, with how many servings
+    if (mode !== 'future') S.diary.filter(x => x.type === 'eat' && iso(new Date(x.ts)) === ui.date).forEach(x => { const k = x.mid || x.name; (eaten[k] = eaten[k] || { mid: x.mid, name: x.name, icon: x.icon, n: 0 }).n += x.servings || 1; });
+    const eatenList = Object.values(eaten);
+    if (eatenList.length) {
+      const open = ui.grp && '_eaten' in ui.grp ? ui.grp._eaten : true, total = eatenList.reduce((n, e) => n + e.n, 0);
+      body += `<section class="tgroup">${head('_eaten', 'Eaten', nice(total), open)}${open ? `<div class="eatenlist">${eatenList.map(e => `<button class="eatenrow" ${e.mid ? `data-a="info" data-m="${e.mid}"` : ''}>${ico(e.icon)}<span class="ename">${esc(e.name)}</span>${eatenDots(e)}</button>`).join('')}</div>` : ''}</section>`;
+    }
+    const lefts = mode === 'future' ? [] : leftoverMods();
+    if (lefts.length) {
+      const open = ui.grp && '_left' in ui.grp ? ui.grp._left : true, total = lefts.reduce((n, m) => n + cookedTotal(m.id), 0);
+      body += `<section class="tgroup">${head('_left', 'Leftovers', nice(total), open)}${open ? `<div class="tlist">${lefts.map(m => { const u = st(m); return `<div class="trow past${u ? ' ' + u.level : ''}"><button class="icobtn" data-a="openFood" data-m="${m.id}" data-k="" aria-label="Edit ${esc(m.name)}">${ico(m.icon)}</button><div class="einfo"><button class="nameb" data-a="openFood" data-m="${m.id}" data-k="">${esc(m.name)}</button><small class="muted">${nice(cookedTotal(m.id))} left</small>${u ? `<button class="tag ${u.level}" data-a="why" data-m="${m.id}">${u.level === 'yellow' ? 'Expiring soon' : 'Expired'}</button>` : ''}</div><div class="rbtns"><button class="ibtn eat" data-a="eat" data-m="${m.id}" aria-label="Eaten: ${esc(m.name)}">${svg('eat')}</button></div><span></span></div>`; }).join('')}</div>` : ''}</section>`;
+    }
     body += orderedCats().map(c => ({ c, ms: rest.filter(m => m.cat === c.id) })).filter(g => g.ms.length).map(({ c, ms }) => {
       const reds = ms.filter(m => st(m) && st(m).level === 'red').length, yels = ms.filter(m => st(m) && st(m).level === 'yellow').length;
       const open = ui.grp && c.id in ui.grp ? ui.grp[c.id] : reds + yels > 0;   // groups with something going bad open by themselves
@@ -614,19 +669,20 @@ function eatView() {
 }
 
 // ----- Diary -----
+const swWrap = (d, html) => `<div class="swrow dsw"><div class="swdel" aria-hidden="true">${svg('trash')}<span>Delete</span></div>${html}</div>`;
 function diaryView() {
   const list = S.diary.slice().sort((a, b) => b.ts - a.ts);
   const days = {};
   list.forEach(d => { const k = iso(new Date(d.ts)); (days[k] = days[k] || []).push(d); });
   const today = todayIso();
   const slotName = id => (SLOTS.find(s => s.id === id) || { name: 'Meal' }).name;
-  const body = list.length ? Object.entries(days).map(([k, es]) => `<h3 class="daytitle">${k === today ? 'Today' : fmtDay(k)}</h3>` + es.map(d => d.type === 'toss'
-    ? `<article class="entry toss"><div class="ehead"><span>Threw out${d.reason === 'expired' ? ' · expired' : ''}</span><small>${fmtTime(d.ts)}</small></div><div class="ebody">${d.icon ? ico(d.icon) : `<span class="svg big">${SV.trash}</span>`}<b>${esc(d.name)}</b><span class="muted">${esc(d.qty || '×' + fmtN(d.servings))}</span></div></article>`
-    : `<article class="entry"><div class="ehead"><span>${slotName(d.slot)}</span><small>${fmtTime(d.ts)}</small></div>
+  const body = list.length ? Object.entries(days).map(([k, es]) => `<h3 class="daytitle">${k === today ? 'Today' : fmtDay(k)}</h3>` + es.map(d => swWrap(d, d.type === 'toss'
+    ? `<article class="entry toss swcard" data-e="${d.id}"><div class="ehead"><span>Threw out${d.reason === 'expired' ? ' · expired' : ''}</span><small>${fmtTime(d.ts)}</small></div><div class="ebody">${d.icon ? ico(d.icon) : `<span class="svg big">${SV.trash}</span>`}<b>${esc(d.name)}</b><span class="muted">${esc(d.qty || '×' + fmtN(d.servings))}</span></div></article>`
+    : `<article class="entry swcard" data-e="${d.id}"><div class="ehead"><span>${slotName(d.slot)}</span><small>${fmtTime(d.ts)}</small></div>
         <div class="ebody">${ico(d.icon || 'other-meal')}<b>${esc(d.name)}${d.servings > 1 ? ' ×' + d.servings : ''}</b></div>
         <div class="rates">${[['rating', 'Taste', 'star'], ['energy', 'Energy', 'bolt'], ['filling', 'Filling', 'bowl']].map(([f, label, ic]) => `<div class="rate ${f}"><span>${label}</span><div class="stars">${[1, 2, 3, 4, 5].map(i => `<button class="${(d[f] || 0) >= i ? 'on' : ''}" data-a="rate" data-i="${d.id}" data-f="${f}" data-r="${i}" aria-label="${label} ${i} of 5">${SV[ic]}</button>`).join('')}</div></div>`).join('')}</div>
         ${d.notes ? `<p class="note">“${esc(d.notes)}”</p>` : ''}
-        <button class="linkbtn" data-a="thoughts" data-i="${d.id}">${d.notes ? 'Edit thoughts' : 'Add thoughts'}</button></article>`).join('')).join('')
+        <button class="linkbtn" data-a="thoughts" data-i="${d.id}">${d.notes ? 'Edit thoughts' : 'Add thoughts'}</button></article>`)).join('')).join('')
     : `<section class="empty">${ico('oatmeal', 'ico xl')}<h2>Your food journal is empty</h2><p>Tap Eaten on the Eat page and it shows up here. Rate it and jot a note.</p></section>`;
   return `<div class="page">${header('Diary', 'Your food journal', 3)}<div class="diary"><button class="btn primary logbtn" data-a="logFood">${svg('plus')}Log food</button>${body}</div></div>`;
 }
@@ -643,7 +699,7 @@ function sheetHtml() {
     const fact = (l, v) => `<span class="fact">${l} <b>${v}</b></span>`;
     inner = `<div class="cardback" style="--bg:${c.bg};--ink:${c.ink}">
       <div class="cbtop">${ico(m.icon, 'ico big')}<div><h2>${esc(m.name)}</h2><p class="muted">${c.name}${m.bf ? ' · Breakfast' : ''}</p></div></div>
-      <div class="facts">${fact('Recipe', nice(m.makes))}${fact('Week', nice(weekServings(m)))}${m.cook ? fact('Batch', nice(m.per)) : ''}</div>
+      <div class="facts">${fact('Recipe', nice(m.makes))}${fact('Week', nice(weekServings(m)))}</div>
       <h4>Ingredients <small>whole recipe</small></h4>
       <ul class="ings">${m.ing.map(i => `<li><span>${esc(i.n)}</span><b>${qtyText(i.a, i.u)}</b><small>${fmtBase(toBase(i.a, i.u) / m.makes, baseUnit(i.u))} a serving · fridge ${stock(ikey(i.n, i.u)) > 0.001 ? fmtBase(stock(ikey(i.n, i.u)), baseUnit(i.u)) : 'none'}</small></li>`).join('')}</ul>
       <h4>Prep</h4><p>${esc(m.method) || '<span class="muted">No prep notes yet.</span>'}</p>
@@ -658,10 +714,9 @@ function sheetHtml() {
         <div class="namecol"><input class="nameinput" data-f="name" value="${esc(d.name)}" placeholder="Name, e.g. Hot honey chicken" aria-label="Name">
           <div class="catline"><span>Category</span><select data-f="cat">${orderedCats().map(x => `<option value="${x.id}" ${x.id === d.cat ? 'selected' : ''}>${x.name}</option>`).join('')}</select></div></div></div>
       ${ui.iconOpen ? `<div class="iconlist">${ALL_ICONS.map(k => `<button class="${k === d.icon ? 'on' : ''}" data-a="setIcon" data-k="${k}">${ico(k)}</button>`).join('')}</div>` : ''}
-      ${fold('servings', 'Servings', `<div class="three">
+      ${fold('servings', 'Servings', `<div class="two">
           <label>Recipe makes<input data-f="makes" type="number" inputmode="numeric" min="1" value="${d.makes}"></label>
           <label>Eat per week<input data-f="wk" type="number" inputmode="decimal" min="0.5" step="0.5" value="${d.wk > 0 ? d.wk : d.makes}"></label>
-          <label data-cookonly class="${off}">Batch size<input data-f="per" type="number" inputmode="numeric" min="1" value="${d.per}" ${dis}></label>
         </div>`, true)}
       ${fold('ings', 'Ingredients', `${d.ing.map((i, n) => `<div class="ingrow"><input data-f="n" data-i="${n}" list="ingnames" value="${esc(i.n)}" placeholder="Ingredient"><input data-f="a" data-i="${n}" type="text" inputmode="text" placeholder="1/2" value="${esc(nice(i.a))}" aria-label="Amount"><select data-f="u" data-i="${n}" aria-label="Unit">${unitOpts(i.u)}</select><button class="icon-btn" data-a="rmIng" data-i="${n}" aria-label="Remove ingredient">${svg('x')}</button></div>`).join('')}
         <datalist id="ingnames">${knownNames().map(x => `<option value="${esc(x)}">`).join('')}</datalist>
@@ -696,13 +751,13 @@ function sheetHtml() {
     if (s.kind === 'cooked') {
       title = m.name; icon = m.icon; max = cookedTotal(m.id); step = 1; startLabel = 'Cooked';
       batches = cookedBatches(m.id).slice().sort((x, y) => (dayNum(x.date) + (x.life ?? m.cooked)) - (dayNum(y.date) + (y.life ?? m.cooked)))
-        .map(x => ({ id: x.id, label: plural(x.n, 'serving'), start: x.date, life: x.life ?? m.cooked }));
+        .map(x => ({ id: x.id, q: x.n, start: x.date, life: x.life ?? m.cooked }));
       noteVal = m.storage || STORAGE_DEFAULT[m.cat] || ''; notePh = 'Where and how you keep leftovers';
     } else {
       const items = S.fridge.filter(i => i.key === s.key);
       title = m ? m.name : items[0].name; icon = m ? m.icon : ingIcon(items[0].name); max = stock(s.key); const u = items[0].unit; s.unit = u; startLabel = 'Bought';
       step = u === 'tsp' ? (max <= 12 ? 1 : max <= 96 ? 3 : 12) : u === 'oz' ? (max <= 16 ? 1 : 4) : 1;
-      batches = items.slice().sort((x, y) => (dayNum(x.start) + x.life) - (dayNum(y.start) + y.life)).map(x => ({ id: x.id, label: fmtBase(x.qty, x.unit), start: x.start, life: x.life }));
+      batches = items.slice().sort((x, y) => (dayNum(x.start) + x.life) - (dayNum(y.start) + y.life)).map(x => ({ id: x.id, q: x.qty, start: x.start, life: x.life }));
       noteVal = storageFor(s.key, items[0].name); notePh = 'Where and how you keep it';
     }
     s.max = max; s.step = step; ui.tossAmt = Math.min(Math.max(ui.tossAmt, 1), max);
@@ -710,21 +765,23 @@ function sheetHtml() {
     const nExp = batches.filter(x => dayNum(x.start) + x.life < dayNum(todayIso())).length;
     const seg = hasCooked && hasRaw ? `<div class="seg" role="tablist"><button class="${s.kind === 'cooked' ? 'on' : ''}" data-a="foodTab" data-kind="cooked" role="tab">Cooked <b>${nice(cookedTotal(m.id))}</b></button><button class="${s.kind === 'ing' ? 'on' : ''}" data-a="foodTab" data-kind="ing" role="tab">Raw <b>${fmtBase(stock(s.key), rawUnit)}</b></button></div>` : '';
     const ic = s.kind === 'cooked' || m ? ico(icon, 'ico headico') : `<button class="iconpick mini" data-a="ingIcons" aria-label="Change icon">${ico(icon, 'ico headico')}</button>`;
-    inner = `${sheetHead(`${ic}<span>${esc(title)}</span>`)}<p id="formmsg" class="formmsg" role="alert"></p>${seg}<p id="finfo" class="muted">${fridgeInfoText(s)}</p>
+    const lab = q => s.kind === 'cooked' ? plural(q, 'serving') : fmtBase(q, s.unit);
+    const groups = batches.map(x => ({ ids: [x.id], q: x.q, start: x.start, life: x.life }));   // one card per purchase; you decide what to combine
+    const titleEl = s.kind === 'ing' ? `<input id="fname" class="titleinput" list="ingnames" value="${esc(S.fridge.find(i => i.key === s.key).name)}" autocomplete="off" autocapitalize="none" aria-label="Name">` : `<span>${esc(title)}</span>`;
+    inner = `${sheetHead(`${ic}${titleEl}`)}<p id="formmsg" class="formmsg" role="alert"></p>${seg}<p id="finfo" class="muted">${fridgeInfoText(s)}</p>
+      ${s.kind === 'ing' ? `<datalist id="ingnames">${knownNames().map(x => `<option value="${esc(x)}">`).join('')}</datalist>` : ''}
       ${s.iconOpen ? `<div class="iconlist">${ALL_ICONS.map(k => `<button class="${k === icon ? 'on' : ''}" data-a="setIngIcon" data-k="${k}">${ico(k)}</button>`).join('')}</div>` : ''}
-      <section class="sec"><h4>${s.kind === 'cooked' ? 'Cooked' : 'Bought'} and expiry <small>type the date from the package, or how many days it keeps</small></h4>
-        ${batches.map(x => `<div class="batch${batches.length > 1 ? ' multi' : ''}" data-b="${x.id}">${batches.length > 1 ? `<div class="bhead">${x.label}</div>` : ''}
-          <div class="dates2"><label>${startLabel}<input type="date" data-bf="start" value="${x.start}"></label><label>Expires<input type="date" data-bf="exp" value="${addDays(x.start, x.life)}"></label><label class="keepsrow">Keeps for<span class="withsuf"><input type="number" inputmode="numeric" min="0" data-bf="life" value="${x.life}"><em>days</em></span></label></div></div>`).join('')}
+      <section class="sec"><div class="sechead"><h4>${s.kind === 'cooked' ? 'Cooked' : 'Bought'} and expiry</h4>${s.kind === 'ing' ? `<button class="icon-btn" data-a="addBatch" aria-label="New purchase">${svg('plus')}</button>` : ''}</div>
+        ${groups.map(g => `<div class="batch${s.freshId && g.ids[0] === s.freshId ? ' fresh' : ''}" data-b="${g.ids.join(',')}">
+          <div class="dates2"><label>${startLabel}${dbx('date', 'data-bf="start"', g.start)}</label><label>Expires${dbx('date', 'data-bf="exp"', addDays(g.start, g.life))}</label></div>
+          <div class="keepline">${s.kind === 'ing' ? `<span class="cstep"><button data-a="batchInc" data-id="${g.ids[0]}" data-d="-1" aria-label="Less">${svg('minus')}</button><b class="amt">${lab(g.q)}</b><button data-a="batchInc" data-id="${g.ids[0]}" data-d="1" aria-label="More">${svg('plus')}</button></span>` : `<b class="amt">${lab(g.q)}</b>`}<label class="keepsrow">Keeps for<span class="withsuf"><input type="number" inputmode="numeric" min="0" data-bf="life" value="${g.life}"><em>days</em></span></label></div></div>`).join('')}
       </section>
       <section class="sec"><h4>Storage</h4><textarea id="stor" rows="2" placeholder="${notePh}">${esc(noteVal)}</textarea></section>
-      <section class="sec"><h4>Throw out</h4>
+      <section class="sec"><h4>Remove</h4>
         <div class="bigstep"><button data-a="tossInc" data-d="-1" aria-label="Less">${svg('minus')}</button><b>${s.kind === 'ing' ? fmtBase(ui.tossAmt, s.unit) : fmtN(ui.tossAmt)}</b><button data-a="tossInc" data-d="1" aria-label="More">${svg('plus')}</button><button class="linkbtn" data-a="tossAll">All</button></div>
-        <div class="sheetbtns"><button class="btn" data-a="closeSheet">Cancel</button><button class="btn danger-fill grow" data-a="doToss">${svg('trash')}Throw out</button></div>
-      </section>
-      <section class="sec"><h4>Clear it out</h4><div class="sheetbtns col">
-        ${nExp ? `<button class="btn danger" data-a="tossExpired">${svg('trash')}${nExp > 1 ? `Throw out the ${nExp} expired` : 'Throw out expired'}</button>` : ''}
-        <button class="btn" data-a="imOut">I'm out of this <small class="muted">it's gone, nothing logged as waste</small></button></div></section>
-      ${s.kind === 'ing' ? `<section class="sec"><h4>Fix the count</h4><div class="ingrow setrow"><input id="setq" type="number" inputmode="decimal" step="any" placeholder="${nice(max / UNITS_F(chooseUnit(max, s.unit)))}"><select id="setu" aria-label="Unit">${unitOpts(chooseUnit(max, s.unit), unitList(s.unit))}</select></div><p class="muted tiny">Type the real amount, then tap away. It updates right away.</p></section>` : ''}`;
+        <div class="sheetbtns"><button class="btn grow" data-a="useUp">${svg('check')}Used up</button><button class="btn danger-fill grow" data-a="doToss">${svg('trash')}Throw out</button></div>
+        ${nExp ? `<button class="btn danger wide" data-a="tossExpired">${svg('trash')}${nExp > 1 ? `Throw out the ${nExp} expired` : 'Throw out expired'}</button>` : ''}
+      </section>`;
   }
   if (s.t === 'unit') {
     const l = cartLines().find(x => x.key === s.key); if (!l) return '';
@@ -776,17 +833,16 @@ function sheetHtml() {
     const L = ui.log; const now = new Date();
     const week = activeMods();
     inner = `${sheetHead('Log food')}
-      ${!L.entryId && week.length ? `<div class="chiplist logpick">${week.map(m => `<button class="mchip" data-a="logSide" data-m="${m.id}">${ico(m.icon)}<span>${esc(m.name)}</span></button>`).join('')}</div>` : ''}
-      <div class="daychips"><button class="chip ${L.date === todayIso() ? 'on' : ''}" data-a="logDay" data-d="0">Today</button><button class="chip ${L.date === addDays(todayIso(), -1) ? 'on' : ''}" data-a="logDay" data-d="-1">Yesterday</button></div>
-      <div class="editrow"><button class="iconpick" data-a="logIcons">${ico(L.icon, 'ico big')}<small>Change</small></button>
-        <label class="grow">What did you eat?<input id="lg-n" value="${esc(L.name)}" placeholder="e.g. Burrito bowl at Chipotle"></label></div>
-      ${L.iconOpen ? `<div class="iconlist">${ALL_ICONS.map(k => `<button class="${k === L.icon ? 'on' : ''}" data-a="setLogIcon" data-k="${k}">${ico(k)}</button>`).join('')}</div>` : ''}
-      <label>Meal<select id="lg-s">${SLOTS.map(x => `<option value="${x.id}" ${x.id === L.slot ? 'selected' : ''}>${x.name}</option>`).join('')}</select></label>
-      <div class="two"><label>Date<input id="lg-d" type="date" value="${L.date}"></label><label>Time<input id="lg-t" type="time" value="${L.time}"></label></div>
-      <label>Servings<input id="lg-q" type="number" inputmode="numeric" min="1" value="${L.servings}"></label>
+      <button class="weekbtn" data-a="logSides" aria-haspopup="dialog">${svg('plan')}<span>Pick a food</span>${svg('down')}</button>
+      <div class="logname"><button class="iconpick mini" data-a="logIcons" aria-label="Change icon">${ico(L.icon, 'ico headico')}</button>
+        <label>What did you eat?<input id="lg-n" value="${esc(L.name)}" placeholder="e.g. Burrito bowl" autocomplete="off"></label></div>
+      <div class="logday"><button class="chip ${L.date === todayIso() ? 'on' : ''}" data-a="logDay" data-d="0">Today</button><button class="chip ${L.date === addDays(todayIso(), -1) ? 'on' : ''}" data-a="logDay" data-d="-1">Yesterday</button>${dbx('date', 'id="lg-d" aria-label="Date"', L.date)}</div>
+      <div class="logrow"><label>Meal<select id="lg-s">${SLOTS.map(x => `<option value="${x.id}" ${x.id === L.slot ? 'selected' : ''}>${x.name}</option>`).join('')}</select></label>
+        <label>Time${dbx('time', 'id="lg-t"', L.time)}</label>
+        <label>Servings<input id="lg-q" type="number" inputmode="numeric" min="1" value="${L.servings}"></label></div>
       <label>Your thoughts<textarea id="lg-o" rows="2" placeholder="Optional">${esc(L.notes)}</textarea></label>`;
   }
-  if (s.t === 'addItem') inner = `${sheetHead('Add to fridge')}<p id="formmsg" class="formmsg" role="alert"></p><label>Item<input id="ai-n" list="ingnames" placeholder="e.g. Parsley"></label><datalist id="ingnames">${knownNames().map(x => `<option value="${esc(x)}">`).join('')}</datalist><div class="two"><label>Quantity<input id="ai-q" type="text" inputmode="text" value="1" placeholder="1/2"></label><label>Unit<select id="ai-u">${unitOpts('ea')}</select></label></div><div class="dates2"><label>Bought<input id="ai-s" type="date" value="${todayIso()}"></label><label>Expires<input id="ai-e" type="date"></label><label class="keepsrow">Keeps for<span class="withsuf"><input id="ai-l" type="number" inputmode="numeric" min="0" placeholder="auto"><em>days</em></span></label></div><p class="muted tiny">Type the date printed on the package, or how many days it keeps. It saves as you type. Leave the name blank to skip.</p>`;
+  if (s.t === 'addItem') inner = `${sheetHead('Add to fridge')}<p id="formmsg" class="formmsg" role="alert"></p><div class="seg" id="ai-kind"><button type="button" class="on" data-a="addKind" data-k="ing">Ingredient</button><button type="button" data-a="addKind" data-k="ready">Leftovers</button></div><div class="itemrow"><button class="iconpick mini" id="ai-ic" data-a="addIcons" type="button" aria-label="Choose icon">${ico(s.icon || 'other-meal', 'ico headico')}</button><label>Item<input id="ai-n" list="ingnames" placeholder="e.g. Kati rolls" autocomplete="off"></label></div><div class="iconlist" id="ai-icons" hidden>${ALL_ICONS.map(k => `<button type="button" data-a="setAddIcon" data-k="${k}">${ico(k)}</button>`).join('')}</div><datalist id="ingnames">${knownNames().map(x => `<option value="${esc(x)}">`).join('')}</datalist><div class="two"><label><span id="ai-ql">Quantity</span><input id="ai-q" type="text" inputmode="text" value="1" placeholder="1/2"></label><label id="ai-ufld">Unit<select id="ai-u">${unitOpts('ea')}</select></label></div><div class="dates2"><label>Bought${dbx('date', 'id="ai-s"', todayIso())}</label><label>Expires${dbx('date', 'id="ai-e"', '')}</label><label class="keepsrow">Keeps for<span class="withsuf"><input id="ai-l" type="number" inputmode="numeric" min="0" placeholder="auto"><em>days</em></span></label></div>`;
   if (s.t === 'settings') {
     const acc = (k, title, summary, body) => { const open = !!(s.open && s.open[k]); return `<button class="acc" data-a="toggleAcc" data-k="${k}" aria-expanded="${open}"><span><b>${title}</b><small>${summary}</small></span>${svg(open ? 'up' : 'down')}</button>${open ? `<div class="accbody">${body}</div>` : ''}`; };
     const planBody = `<p class="muted">The order of the steps when you plan a week, and how many to pick from each. Use 0 for no target.</p>
@@ -804,7 +860,7 @@ function sheetHtml() {
     ${acc('data', 'Your data', 'Back up, restore, or reset', dataBody)}
     <p class="version">Meal Loop · version ${APP_VERSION}</p>`;
   }
-  return `<div class="backdrop" data-a="closeSheet"></div><div class="panel ${cls}"><div class="grab"></div><button class="sheetx" data-a="closeSheet" aria-label="Close">${svg('x')}</button><div class="pbody">${inner}</div></div>`;
+  return `<div class="backdrop" data-a="closeSheet"></div><div class="panel ${cls}"><div class="grab"></div><button class="sheetx" data-a="closeSheet" aria-label="Close">${svg('x')}</button><div class="pbody">${inner}</div></div>${popHtml()}`;
 }
 const ALL_ICONS = ['carrots', 'brussels-sprouts', 'cucumber', 'butternut-squash', 'tomatoes', 'tomato-cucumber-salad', 'green-beans', 'bell-peppers', 'broccoli', 'sweet-potato', 'salad-greens', 'spinach', 'chicken', 'chickpeas', 'eggs', 'hummus', 'black-beans', 'lentils', 'salmon', 'tofu', 'greek-yogurt', 'turkey', 'mac-cheese', 'pita', 'rice', 'pasta', 'potatoes', 'bread', 'ramen-noodles', 'tortillas', 'couscous', 'bagels', 'quinoa', 'other-grain', 'hot-honey', 'tahini-lemon', 'feta', 'tomato-sauce', 'pesto', 'salsa', 'soy-sesame', 'garlic-butter', 'yogurt-sauce', 'lemon-olive-oil', 'favorite-dressing', 'bananas', 'apples', 'strawberries', 'blueberries', 'grapes', 'mandarins', 'peaches', 'melon', 'cereal-milk', 'eggs-toast-b', 'yogurt-fruit-granola', 'avocado-toast-egg', 'bagel-cream-cheese', 'oatmeal', 'purchased-breakfast', 'apple-pb', 'crackers-cheese', 'hummus-veggies', 'yogurt', 'trail-mix', 'popcorn', 'granola-bar', 'fruit-snack', 'cheese-fruit', 'rice-cakes', 'nut-butter-banana', 'chicken-noodle-soup', 'ramen-egg', 'takeout', 'frozen-meal', 'quesadilla', 'cereal-dinner', 'eggs-toast', 'soup-bread', 'pasta-sauce', 'stir-fry', 'salad-bowl', 'other-meal', 'cookies', 'ice-cream', 'chocolate', 'brownie', 'pastry', 'chips', 'candy', 'seasonal', 'croissant', 'cake', 'donut'];
 
@@ -820,6 +876,8 @@ function renderMain() {
     `<button class="tab ${ui.tab === id ? 'on' : ''} ${id === 'eat' ? 'main' : ''}" data-a="tab" data-t="${id}">${svg(ic)}<span>${n}</span>${id === 'plan' && lines ? '<i class="dot"></i>' : ''}</button>`).join('');
 }
 let lastSheet = null;
+// text boxes grow with what is typed, so nothing hides behind a tiny scroll window
+function autoGrow(t) { t.style.height = 'auto'; t.style.height = (t.scrollHeight + 4) + 'px'; }
 function renderSheet() {
   const el = $('#sheet'); const same = !!ui.sheet && ui.sheet === lastSheet; lastSheet = ui.sheet;
   const keep = same && $('.pbody') ? $('.pbody').scrollTop : 0;
@@ -827,6 +885,8 @@ function renderSheet() {
   el.innerHTML = html; el.className = html ? 'open' + (same ? ' still' : '') : '';
   if (same && keep && $('.pbody')) $('.pbody').scrollTop = keep;
   document.body.classList.toggle('lock', !!html);
+  el.querySelectorAll('textarea').forEach(autoGrow);
+  syncDbox();
 }
 
 // ---------- actions ----------
@@ -842,11 +902,12 @@ function readDraftField(el) {
   else d[f] = el.value;
 }
 document.addEventListener('input', e => {
+  if (e.target.tagName === 'TEXTAREA') autoGrow(e.target);
   if (ui.sheet && ui.sheet.t === 'edit') { readDraftField(e.target); ui.sheet.warned = false; scheduleCommit(); }
   const id = e.target.id;
   if (ui.sheet && ui.sheet.t === 'toss') { if (e.target.dataset.bf) onBatchInput(e.target); else if (id === 'stor') saveStorage(e.target.value); }
   if (ui.sheet && ui.sheet.t === 'addItem' && (id === 'ai-s' || id === 'ai-e' || id === 'ai-l')) linkAddDates(id);
-  if (ui.sheet && ui.sheet.t === 'addItem' && id === 'ai-n') guessAddLife();
+  if (ui.sheet && ui.sheet.t === 'addItem' && id === 'ai-n') { guessAddLife(); if (!ui.sheet.icon) $('#ai-ic').innerHTML = ico(ingIcon(e.target.value.trim() || 'x'), 'ico headico'); }
   if (id === 'notes' && ui.sheet && ui.sheet.t === 'thoughts') scheduleCommit();
   if (ui.sheet && (ui.sheet.t === 'logfood' || ui.sheet.t === 'addItem') && /^(lg|ai)-/.test(id)) { ui.sheet.warned = false; scheduleCommit(); }
   if (e.target.classList.contains('price-in')) { const v = parseFloat(e.target.value); setUnit(e.target.dataset.k, { price: v >= 0 ? v : null }); }
@@ -858,6 +919,7 @@ document.addEventListener('input', e => {
 document.addEventListener('change', e => {
   if (ui.sheet && ui.sheet.t === 'edit') { readDraftField(e.target); scheduleCommit(); }
   if (ui.sheet && ui.sheet.t === 'toss' && e.target.dataset.bf) onBatchInput(e.target);
+  if (e.target.id === 'fname' && ui.sheet && ui.sheet.t === 'toss') renameIng(e.target.value);
   if ((e.target.id === 'setq' || e.target.id === 'setu') && ui.sheet && ui.sheet.t === 'toss') applyQty();
   if (ui.sheet && ui.sheet.t === 'addItem' && (e.target.id === 'ai-s' || e.target.id === 'ai-e')) linkAddDates(e.target.id);
   if (e.target.id === 'imp') importData(e.target.files[0]);
@@ -870,6 +932,24 @@ document.addEventListener('change', e => {
 
 // ----- autosave: forms commit when closed; the module editor and notes also save as you type -----
 let commitTimer;
+// rename a fridge ingredient (all its batches) so it matches the name used in your recipes, and stops showing up in the shopping cart
+function renameIng(v) {
+  const sh = ui.sheet, old = sh.key, items = S.fridge.filter(i => i.key === old); if (!items.length) return;
+  const oldName = items[0].name, u = items[0].unit, name = canon(v.trim()), msg = $('#formmsg'), fld = $('#fname');
+  if (!name) { fld.value = oldName; return; }
+  const nk = ikey(name, u), k = normName(name), used = new Set();
+  S.modules.forEach(m => m.ing.forEach(i => { if (normName(i.n) === k) used.add(baseUnit(i.u)); }));
+  S.fridge.forEach(f => { if (f.key !== old && normName(f.name) === k) used.add(f.unit); });
+  if (used.size && !used.has(u)) { msg.textContent = `${name} is measured a different way in your recipes.`; fld.value = oldName; return; }
+  msg.textContent = '';
+  items.forEach(i => { i.name = name; i.key = nk; });
+  if (nk !== old) {
+    ['units', 'life', 'ingNotes'].forEach(b => { if (S[b] && S[b][old] !== undefined && S[b][nk] === undefined) S[b][nk] = S[b][old]; });
+    const ok = normName(oldName), nn = normName(name);
+    if (S.ingIcons && S.ingIcons[ok] && !S.ingIcons[nn]) S.ingIcons[nn] = S.ingIcons[ok];
+  }
+  sh.key = nk; save(); render(); savedFlash();
+}
 function savedFlash() {
   const el = $('#savedchip'); if (!el) return;
   if (ui.sheet) ui.sheet.saved = true;
@@ -906,7 +986,7 @@ function commitModule() {
   const seen = new Set();
   for (const i of ing) { const k = ikey(i.n, i.u); if (seen.has(k)) return { error: `${i.n} is listed twice. Combine it into one line.` }; seen.add(k); }
   const makes = Math.max(1, d.makes || 1);
-  const saved = { ...clone(d), ing, makes, wk: d.wk > 0 ? d.wk : makes, per: Math.min(Math.max(1, d.per || makes), makes) };
+  const saved = { ...clone(d), ing, makes, wk: d.wk > 0 ? d.wk : makes, per: makes };
   delete saved.isNew;
   const idx = S.modules.findIndex(m => m.id === d.id);
   if (idx >= 0) S.modules[idx] = saved; else S.modules.push(saved);
@@ -931,6 +1011,17 @@ function commitLog() {
 function commitItem() {
   const s = ui.sheet, nEl = $('#ai-n'); if (!s || !nEl || !nEl.value.trim()) return { skip: true };
   const n = nEl.value.trim(), q = parseAmt($('#ai-q').value), u = $('#ai-u').value;
+  if (s.ready) {   // takeout or other leftovers: servings you can eat, no recipe, never in this week's list
+    if (!(q > 0)) return { error: 'Enter how many servings.' };
+    const st = $('#ai-s').value || todayIso(), ev = $('#ai-e').value, lv = parseInt($('#ai-l').value);
+    let life = 3; if (lv >= 0) life = lv; else if (ev) { life = dayNum(ev) - dayNum(st); if (life < 0) return { error: 'That expiry date is before it was bought.' }; }
+    let m = s.mid && mod(s.mid), created = false;
+    if (!m) { m = newOneoff(n); s.mid = m.id; created = true; }
+    m.name = n; m.icon = s.icon || ingIcon(n); m.cooked = life;
+    const list = (S.cooked[m.id] = S.cooked[m.id] || []); let b = s.cbId && list.find(x => x.id === s.cbId);
+    if (b) Object.assign(b, { n: q, date: st, life }); else { b = { id: uid(), n: q, date: st, life }; list.push(b); s.cbId = b.id; }
+    ui.fresh = 'm:' + m.id; save(); return { ok: true, created, name: n };
+  }
   if (!(q > 0)) return { error: 'Enter a quantity.' };
   const bad = unitConflict(n, u, null, s.batchId); if (bad) return { error: bad };
   const st = $('#ai-s').value || todayIso(), ev = $('#ai-e').value, lv = parseInt($('#ai-l').value);
@@ -938,16 +1029,23 @@ function commitItem() {
   const nm = canon(n), bu = baseUnit(u);
   if (life != null && s.lifeSrc === 'keeps') S.life[ikey(nm, bu)] = life;
   const b = s.batchId && S.fridge.find(f => f.id === s.batchId);
-  if (b) { Object.assign(b, { name: nm, unit: bu, key: ikey(nm, bu), qty: toBase(q, u), start: st, life: life != null ? life : lifeFor(nm, bu) }); save(); return { ok: true, created: false, name: n }; }
-  const nb = addFridge(n, u, q, st, life); s.batchId = nb.id; save();
+  ui.fresh = ikey(nm, bu);   // the tile to highlight on the Fridge page
+  if (b) { Object.assign(b, { name: nm, unit: bu, key: ikey(nm, bu), qty: toBase(q, u), start: st, life: life != null ? life : lifeFor(nm, bu) }); if (s.icon) S.ingIcons[normName(nm)] = s.icon; save(); return { ok: true, created: false, name: n }; }
+  const nb = addFridge(n, u, q, st, life); s.batchId = nb.id;
+  if (s.icon) S.ingIcons[normName(nm)] = s.icon;
+  save();
   return { ok: true, created: true, name: n };
 }
 // keep Bought / Expires / Keeps in step on the add sheet
 // once a name is typed, fill Expires with the usual shelf life (until you type a date or days yourself)
+function dropCreated(s) {   // switching Ingredient / Leftovers after typing: remove what the sheet made, then make it again as the other kind
+  if (s.batchId) { S.fridge = S.fridge.filter(f => f.id !== s.batchId); s.batchId = null; }
+  if (s.mid) { delete S.cooked[s.mid]; S.modules = S.modules.filter(m => m.id !== s.mid); s.mid = null; s.cbId = null; }
+}
 function guessAddLife() {
   const s = ui.sheet, n = $('#ai-n').value.trim(), eEl = $('#ai-e'), lEl = $('#ai-l'), sEl = $('#ai-s');
   if (s.lifeSrc || !n) return;
-  const d = lifeFor(canon(n), baseUnit($('#ai-u').value));
+  const d = s.ready ? 3 : lifeFor(canon(n), baseUnit($('#ai-u').value));
   lEl.placeholder = d; eEl.value = addDays(sEl.value || todayIso(), d);
 }
 function linkAddDates(id) {
@@ -957,16 +1055,17 @@ function linkAddDates(id) {
   else if (id === 'ai-s') { const n = parseInt(lEl.value) >= 0 ? parseInt(lEl.value) : parseInt(lEl.placeholder); if (n >= 0 && sEl.value) eEl.value = addDays(sEl.value, n); }
 }
 // Bought / Expires / Keeps on a fridge item: any one of them updates the others
+const stepFor = (u, q) => u === 'tsp' ? (q <= 12 ? 1 : q <= 96 ? 3 : 12) : u === 'oz' ? (q <= 16 ? 1 : 4) : 1;
 function onBatchInput(el) {
   const s = ui.sheet, row = el.closest('.batch'); if (!row) return;
-  const cooked = s.kind === 'cooked', m = cooked ? mod(s.mid) : null, f = el.dataset.bf, id = row.dataset.b;
-  const b = cooked ? cookedBatches(s.mid).find(x => x.id === id) : S.fridge.find(x => x.id === id); if (!b) return;
-  const start = () => cooked ? b.date : b.start, life = () => cooked ? (b.life ?? m.cooked) : b.life;
+  const cooked = s.kind === 'cooked', m = cooked ? mod(s.mid) : null, f = el.dataset.bf;
+  const bs = row.dataset.b.split(',').map(id => cooked ? cookedBatches(s.mid).find(x => x.id === id) : S.fridge.find(x => x.id === id)).filter(Boolean); if (!bs.length) return;
+  const b = bs[0], start = () => cooked ? b.date : b.start, life = () => cooked ? (b.life ?? m.cooked) : b.life;
   const fE = row.querySelector('[data-bf=exp]'), fL = row.querySelector('[data-bf=life]'), iso = /^\d{4}-\d\d-\d\d$/;
   formMsg('');
-  if (f === 'start') { if (!iso.test(el.value)) return; if (cooked) b.date = el.value; else b.start = el.value; fE.value = addDays(el.value, life()); }
-  else if (f === 'life') { const n = parseInt(el.value); if (!(n >= 0)) return; b.life = n; fE.value = addDays(start(), n); if (cooked) m.cooked = n; else S.life[b.key] = n; }
-  else if (f === 'exp') { if (!iso.test(el.value)) return; const n = dayNum(el.value) - dayNum(start()); if (n < 0) { formMsg('That date is before it was ' + (cooked ? 'cooked.' : 'bought.')); return; } b.life = n; fL.value = n; }
+  if (f === 'start') { if (!iso.test(el.value)) return; bs.forEach(x => { if (cooked) x.date = el.value; else x.start = el.value; }); fE.value = addDays(el.value, life()); }
+  else if (f === 'life') { const n = parseInt(el.value); if (!(n >= 0)) return; bs.forEach(x => { x.life = n; }); fE.value = addDays(start(), n); if (cooked) m.cooked = n; else S.life[b.key] = n; }
+  else if (f === 'exp') { if (!iso.test(el.value)) return; const n = dayNum(el.value) - dayNum(start()); if (n < 0) { formMsg('That date is before it was ' + (cooked ? 'cooked.' : 'bought.')); return; } bs.forEach(x => { x.life = n; }); fL.value = n; }
   save(); savedFlash(); renderMain();
   const fi = $('#finfo'); if (fi) fi.textContent = fridgeInfoText(s);
 }
@@ -993,7 +1092,7 @@ function runCommit() {
   if (s.t === 'edit') { const r = commitModule(); formMsg(r.error || ''); if (r.ok) { savedFlash(); renderMain(); } }
   else if (s.t === 'thoughts') { flushNotes(); savedFlash(); renderMain(); }
   else if (s.t === 'logfood') { const r = commitLog(); if (r.ok) { savedFlash(); renderMain(); } }
-  else if (s.t === 'addItem') { const r = commitItem(); formMsg(r.error || ''); if (r.ok) { savedFlash(); renderMain(); } }
+  else if (s.t === 'addItem') { const r = commitItem(); formMsg(r.error || ''); if (r.ok) { savedFlash(); renderMain(); if (r.created) toast(`${r.name} is in your fridge.`); } }
 }
 function scheduleCommit() { clearTimeout(commitTimer); commitTimer = setTimeout(runCommit, 350); }
 function commitOnClose() {
@@ -1003,7 +1102,7 @@ function commitOnClose() {
   if (s.t === 'edit') { r = commitModule(); if (r.ok && r.created) msg = 'Module added.'; }
   else if (s.t === 'thoughts') flushNotes();
   else if (s.t === 'logfood') { r = commitLog(); if (r.ok && r.created) msg = 'Added to your journal.'; }
-  else if (s.t === 'addItem') { r = commitItem(); if (r.ok && r.created) msg = `${r.name} added to your fridge.`; }
+  else if (s.t === 'addItem') { r = commitItem(); if (r.ok && s.ready && s.mid) mergeOneoff(s.mid); if (r.ok && r.created) msg = `${r.name} added to your fridge.`; }
   else if (s.t === 'toss' && s.kind === 'ing') { const q = $('#setq'); if (q && q.value !== '') applyQty(); }
   if (r && r.error) {
     if (!s.warned) { s.warned = true; toast(`${r.error} Tap outside again to discard.`); return false; }
@@ -1020,12 +1119,12 @@ function applyQty() {
 }
 
 const A = {
-  tab: d => { ui.tab = d.t; ui.sheet = null; ui.eatDate = null; ui.date = todayIso(); render(); },
+  tab: d => { ui.fresh = null; ui.tab = d.t; ui.sheet = null; ui.eatDate = null; ui.date = todayIso(); render(); },
   toastExtra: () => { const t = $('#toast'), f = t._extra; t.className = ''; if (f) f(); },
   undo: () => { const t = $('#toast'); if (t._undo) t._undo(); t.className = ''; },
-  planTab: d => { ui.planTab = d.t; if (d.t !== 'week') ui.picking = false; render(); },
+  planTab: d => { ui.fresh = null; ui.planTab = d.t; if (d.t !== 'week') ui.picking = false; render(); },
   settings: () => { ui.sheet = { t: 'settings' }; renderSheet(); },
-  closeSheet: () => { if (!commitOnClose()) return; const was = ui.sheet; ui.sheet = null; ui.iconOpen = false; if (was && was.t === 'edit') ui.draft = null; render(); },
+  closeSheet: () => { if (!commitOnClose()) return; const was = ui.sheet; ui.sheet = null; ui.iconOpen = false; if (was && was.t === 'edit') ui.draft = null; render(); const f = was && was.t === 'addItem' && document.querySelector('.tile.fresh'); if (f) f.scrollIntoView({ block: 'center', behavior: 'smooth' }); },
   // week
   startWeek: () => { if (S.week && S.week.picks.length) { ui.sheet = { t: 'confirmWeek' }; renderSheet(); } else A.newWeek(); },
   newWeek: () => { if (S.week && S.week.picks.length) S.history.push({ ...S.week, archived: todayIso() }); S.week = { id: uid(), start: todayIso(), locked: false, picks: [], tally: {} }; ui.picking = true; ui.step = 0; ui.planTab = 'week'; ui.sheet = null; save(); render(); },
@@ -1043,7 +1142,7 @@ const A = {
     save();
     if (d.close) ui.sheet = null;
     render();
-    if (i < 0) { const miss = m.ing.filter(g => stock(ikey(g.n, g.u)) < toBase(g.a, g.u) * remaining(m) / m.makes - 0.001).length; toast(miss ? `${m.name} added. ${miss} item${miss > 1 ? 's' : ''} to buy.` : `${m.name} added. You have it all.`); }
+    if (i < 0) { const miss = m.ing.filter(g => stock(ikey(g.n, g.u)) < toBase(g.a, g.u) * needFrac(m) - 0.001).length; toast(miss ? `${m.name} added. ${miss} item${miss > 1 ? 's' : ''} to buy.` : `${m.name} added. You have it all.`); }
   },
   lockWeek: () => { S.week.locked = true; ui.picking = false; ui.step = 0; save(); render(); toast('Week locked in.'); },
   info: d => { ui.sheet = { t: 'info', mid: d.m }; renderSheet(); },
@@ -1071,12 +1170,32 @@ const A = {
   // cart + fridge
   cartAdd: d => { const l = cartLines().find(x => x.key === d.k); if (!l) return; mutate('Added to fridge.', () => addFridge(l.name, l.unit, l.buy), { label: 'Edit date', go: () => A.openFood({ k: l.key, m: '' }) }); },
   cartAddAll: () => { const ls = cartLines(); mutate(`${ls.length} items added to fridge.`, () => ls.forEach(l => addFridge(l.name, l.unit, l.buy))); },
+  addKind: d => {
+    const s = ui.sheet; dropCreated(s); s.ready = d.k === 'ready';
+    document.querySelectorAll('#ai-kind button').forEach(b => b.classList.toggle('on', b.dataset.k === d.k));
+    $('#ai-ufld').hidden = s.ready; document.querySelector('.two').classList.toggle('one', s.ready);
+    $('#ai-ql').textContent = s.ready ? 'Servings' : 'Quantity'; $('#ai-n').placeholder = s.ready ? 'e.g. Kati rolls' : 'e.g. Parsley';
+    guessAddLife(); runCommit(); renderMain();
+  },
   addItem: () => { ui.sheet = { t: 'addItem' }; renderSheet(); },
   openFood: d => { const hasC = d.m && cookedTotal(d.m) > 0; ui.sheet = { t: 'toss', kind: hasC ? 'cooked' : 'ing', key: d.k || null, mid: d.m || null }; ui.tossAmt = 1; renderSheet(); },
   foodTab: d => { ui.sheet.kind = d.kind; ui.sheet.iconOpen = false; ui.tossAmt = 1; renderSheet(); },
   tossIng: d => { ui.sheet = { t: 'toss', kind: 'ing', key: d.k }; ui.tossAmt = 1; renderSheet(); },
   tossCooked: d => { ui.sheet = { t: 'toss', kind: 'cooked', mid: d.m }; ui.tossAmt = 1; renderSheet(); },
   tossInc: d => { const s = ui.sheet; ui.tossAmt = Math.min(s.max, Math.max(s.step, ui.tossAmt + (+d.d) * s.step)); renderSheet(); },
+  batchInc: d => {   // the count on each card; going to zero removes the card (nothing logged as waste)
+    const s = ui.sheet, b = S.fridge.find(x => x.id === d.id); if (!b) return;
+    const step = stepFor(b.unit, b.qty) * (+d.d);
+    if (b.qty + step <= 1e-6) { mutate('Removed. Nothing logged as waste.', () => { S.fridge = S.fridge.filter(x => x.id !== d.id); if (!S.fridge.some(i => i.key === s.key)) ui.sheet = null; }); return; }
+    b.qty += step; save(); render(); savedFlash();
+  },
+  addBatch: () => {   // a new purchase = a new card, dated today
+    const s = ui.sheet, it = S.fridge.find(i => i.key === s.key); if (!it) return;
+    const sz = S.units && S.units[s.key] && S.units[s.key].size, nb = addFridge(it.name, it.unit, sz > 0 ? sz : stepFor(it.unit, 0), todayIso());
+    s.freshId = nb.id; save(); render(); savedFlash();
+    const el = document.querySelector('.batch.fresh'); if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  },
+  useUp: () => { const s = ui.sheet, amt = ui.tossAmt; ui.sheet = null; mutate('Removed. Nothing logged as waste.', () => { if (s.kind === 'cooked') consumeCooked(s.mid, amt); else consume(s.key, amt); }); },
   tossAll: () => { ui.tossAmt = ui.sheet.max; renderSheet(); },
   doToss: () => {
     const s = ui.sheet; const amt = ui.tossAmt; ui.sheet = null;
@@ -1105,13 +1224,14 @@ const A = {
   entryRm: d => { mutate('Removed from the day.', () => { S.plan[ui.date] = entriesOn(ui.date).filter(e => e.id !== d.e); }); },
   cook: d => {
     const m = mod(d.m); if (!m || (isPicked(m.id) && remaining(m) <= 0.01)) return;
-    const n = Math.min(m.per, Math.max(1, Math.ceil(remaining(m) - 1e-9)));
+    const n = m.makes;   // Cooked adds the whole recipe
     mutate('Cooked.', () => { const short = doCook(d.m, n); return short.length ? `Cooked ${n} ${m.name}. Short on ${short.slice(0, 2).join(', ')}.` : `Cooked ${n} serving${n > 1 ? 's' : ''} of ${m.name}.`; }, { label: 'Edit date', go: () => A.openFood({ m: d.m, k: '' }) });
   },
   eat: d => { const m = mod(d.m); mutate('Eaten.', () => { doEat(d.m, ui.date, null, d.e); return `Ate 1 ${m.name}.`; }); },
   // diary
   rate: d => { const e = S.diary.find(x => x.id === d.i), f = d.f || 'rating'; e[f] = e[f] === +d.r ? 0 : +d.r; save(); render(); },
   thoughts: d => { ui.sheet = { t: 'thoughts', id: d.i }; renderSheet(); setTimeout(() => { const n = $('#notes'); if (n) n.focus(); }, 60); },
+  delSwipe: d => { mutate('Entry deleted.', () => { S.diary = S.diary.filter(x => x.id !== d.i); }); },
   delEntry: d => { if (!confirm('Delete this diary entry?')) return; S.diary = S.diary.filter(x => x.id !== d.i); ui.sheet = null; save(); render(); },
   // cooked / eaten tally
   tally: d => { ui.sheet = { t: 'tally', mid: d.m }; renderSheet(); },
@@ -1144,6 +1264,8 @@ const A = {
   },
   openCart: () => { ui.sheet = null; ui.tab = 'plan'; ui.planTab = 'cart'; ui.picking = false; render(); },
   // fridge item: icon
+  addIcons: () => { const l = $('#ai-icons'); l.hidden = !l.hidden; },
+  setAddIcon: d => { ui.sheet.icon = d.k; $('#ai-ic').innerHTML = ico(d.k, 'ico headico'); $('#ai-icons').hidden = true; scheduleCommit(); },
   ingIcons: () => { ui.sheet.iconOpen = !ui.sheet.iconOpen; renderSheet(); },
   setIngIcon: d => { const it = S.fridge.find(i => i.key === ui.sheet.key); if (it) S.ingIcons[normName(it.name)] = d.k; ui.sheet.iconOpen = false; save(); renderMain(); renderSheet(); savedFlash(); },
   // Eat page: fold or open a section
@@ -1168,7 +1290,7 @@ const A = {
   logFood: () => { const n = new Date(); ui.log = { name: '', icon: 'takeout', slot: slotGuess({ cat: 'meal' }), date: todayIso(), time: `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`, servings: 1, notes: '', iconOpen: false }; ui.sheet = { t: 'logfood' }; renderSheet(); },
   logDay: d => { captureLog(); ui.log.date = addDays(todayIso(), +d.d); renderSheet(); scheduleCommit(); },
   logSide: d => {   // a side from this week: same as tapping Eaten, but on the chosen day
-    captureLog(); const L = ui.log, m = mod(d.m); if (!m || L.entryId) return;
+    captureLog(); const L = ui.log, m = mod(d.m); L.sidesOpen = false; if (!m) return; if (L.entryId) startNewLog();
     const snap = JSON.stringify(S);
     doEat(d.m, L.date, L.slot);
     const e = S.diary.filter(x => x.type === 'eat' && x.mid === d.m).sort((x, y) => y.ts - x.ts)[0];
@@ -1176,12 +1298,27 @@ const A = {
     L.time = `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
     save(); render(); toast('Added to your journal.', () => { S = Object.assign(fresh(), JSON.parse(snap)); ui.log.entryId = null; ui.log.name = ''; save(); render(); });
   },
-  logIcons: () => { captureLog(); ui.log.iconOpen = !ui.log.iconOpen; renderSheet(); },
+  logIng: d => {   // an ingredient from the fridge: logs one, and takes one from the fridge when it is counted in 'each'
+    captureLog(); const L = ui.log; L.sidesOpen = false; const f = S.fridge.find(i => i.key === d.k); if (!f) return; if (L.entryId) startNewLog();
+    const snap = JSON.stringify(S), each = f.unit === 'ea', date = L.date, slot = L.slot;
+    if (each) consume(d.k, 1);
+    const last = S.diary.find(x => x.type === 'eat' && x.ingKey === d.k && x.slot === slot && iso(new Date(x.ts)) === date);
+    let e; if (last) { last.servings++; e = last; } else { e = { id: uid(), ts: tsFor(date), type: 'eat', ingKey: d.k, name: f.name, icon: ingIcon(f.name), servings: 1, slot, rating: 0, notes: '', src: [{ k: 'i' }] }; S.diary.push(e); }
+    const t = new Date(e.ts); L.entryId = e.id; L.name = e.name; L.icon = e.icon; L.servings = e.servings; L.notes = e.notes || '';
+    L.time = `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`;
+    save(); render(); toast(each ? 'Added to your journal.' : 'Added to your journal. Update the amount in your fridge.', () => { S = Object.assign(fresh(), JSON.parse(snap)); ui.log.entryId = null; ui.log.name = ''; save(); render(); });
+  },
+  logIcons: () => { captureLog(); ui.log.iconOpen = !ui.log.iconOpen; ui.log.sidesOpen = false; renderSheet(); },
+  logSides: () => { captureLog(); ui.log.sidesOpen = !ui.log.sidesOpen; ui.log.iconOpen = false; renderSheet(); },
   setLogIcon: d => { captureLog(); ui.log.icon = d.k; ui.log.iconOpen = false; renderSheet(); scheduleCommit(); },
   // settings
   exportData: () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(S, null, 1)], { type: 'application/json' })); a.download = `meal-loop-backup-${todayIso()}.json`; a.click(); },
-  resetModules: () => { if (!confirm('Replace your module library with the starter set? Picks and logs stay, but your edits to modules are lost.')) return; S.modules = parseModules(); if (S.week) S.week.picks = []; S.cooked = {}; S.plan = {}; ui.sheet = null; save(); render(); toast('Library reset.'); },
+  resetModules: () => { if (!confirm('Replace your module library with the starter set? Picks and logs stay, but your edits to modules are lost.')) return; const keep = S.modules.filter(m => m.oneoff), kc = {}; keep.forEach(m => { kc[m.id] = S.cooked[m.id] || []; }); S.modules = parseModules().concat(keep); if (S.week) S.week.picks = []; S.cooked = kc; S.plan = {}; ui.sheet = null; save(); render(); toast('Library reset.'); },
 };
+function startNewLog() {   // picking another food: save the one on screen, then start a fresh entry (same day and meal)
+  const L = ui.log; clearTimeout(commitTimer); runCommit();
+  Object.assign(L, { entryId: null, name: '', icon: 'takeout', servings: 1, notes: '' });
+}
 function captureLog() {
   const L = ui.log; if (!L || !$('#lg-n')) return;
   L.name = $('#lg-n').value; L.slot = $('#lg-s').value; L.date = $('#lg-d').value; L.time = $('#lg-t').value; L.servings = $('#lg-q').value; L.notes = $('#lg-o').value;
@@ -1200,7 +1337,7 @@ function importData(file) {
   const closeOpen = except => { if (openRow && !document.contains(openRow)) openRow = null; if (openRow && openRow !== except) { setX(openRow, 0, true); openRow.classList.remove('swopen'); openRow = null; } };
   document.addEventListener('pointerdown', e => {
     if (e.target.closest('.swdel')) return;
-    const row = e.target.closest('.slotrow');
+    const row = e.target.closest('.slotrow, .swcard');
     if (!row) { closeOpen(); return; }
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     closeOpen(row);
@@ -1217,11 +1354,17 @@ function importData(file) {
       drag.active = true; moved = true;
       try { drag.row.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
     }
-    setX(drag.row, Math.max(-OPEN - 24, Math.min(0, drag.base + dx)), false);
+    setX(drag.row, Math.max(drag.row.classList.contains('swcard') ? -drag.row.offsetWidth : -OPEN - 24, Math.min(0, drag.base + dx)), false);
   });
   const end = e => {
     if (!drag || (e.pointerId !== undefined && e.pointerId !== drag.pid)) return;
     const row = drag.row;
+    if (drag.active && row.classList.contains('swcard')) {   // diary entry: a long swipe left deletes it, a short one springs back
+      const cur = new DOMMatrix(getComputedStyle(row).transform).m41;
+      if (cur <= -Math.min(150, row.offsetWidth * 0.4)) { setX(row, -row.offsetWidth - 24, true); setTimeout(() => A.delSwipe({ i: row.dataset.e }), 180); }
+      else setX(row, 0, true);
+      drag = null; return;
+    }
     if (drag.active) {
       const cur = new DOMMatrix(getComputedStyle(row).transform).m41;
       if (cur < -OPEN / 2) {
@@ -1321,3 +1464,6 @@ function migrate() {
 migrate();
 render();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => { });
+
+// no pinch or double-tap zoom: the layout is built for the phone's width
+['gesturestart', 'gesturechange', 'gestureend'].forEach(ev => document.addEventListener(ev, e => e.preventDefault()));
